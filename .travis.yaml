@@ -1,0 +1,19 @@
+language: go
+
+branches:
+  only:
+    - master
+    - develop
+
+before_install:
+  - go get github.com/onsi/gomega
+  - go get github.com/onsi/ginkgo/ginkgo
+  - go get github.com/modocache/gover
+  - go get github.com/mattn/goveralls
+
+script:
+  - ginkgo -r --failOnPending --cover --trace ./..
+
+after_success:
+  - gover
+  - goveralls -coverprofile=gover.coverprofile -service travis-ci -repotoken $COVERALLS_TOKEN
