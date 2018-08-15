@@ -96,6 +96,14 @@ func newQuerySequence() *QuerySequence {
 	}
 }
 
+// NewQuerySequence creates a new empty QuerySequence.
+func NewQuerySequence() *QuerySequence {
+
+	querySequence := newQuerySequence()
+
+	return querySequence
+}
+
 // NewJoin creates a new QuerySequence with a join.
 func NewJoin(objects ...database.Object) *QuerySequence {
 
