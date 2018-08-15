@@ -10,7 +10,7 @@ before_install:
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
-  - go get gopkg.in/alecthomas/gometalinter.v2
+  - go get -u gopkg.in/alecthomas/gometalinter.v2
 
 install:
   # Add Godeps dependencies to GOPATH and PATH
@@ -18,7 +18,7 @@ install:
   - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
 
 before_script:
-  - gometalinter --errors ./...
+  - gometalinter --disable-all --enable=errcheck --enable=vet --enable=vetshadow --enable=gosec ./...
 
 script:
   - ginkgo -r --failOnPending --cover --trace ./...

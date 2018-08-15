@@ -333,9 +333,10 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 
 	args := make([]interface{}, 0)
 	if self.whereBuilder != nil {
+		whereTemplate := `WHERE %s`
 		whereClause, whereArgs := self.whereBuilder.asQuery(&self)
 		args = whereArgs
-		query += " WHERE " + whereClause
+		query += " " + fmt.Sprintf(whereTemplate, whereClause)
 	}
 
 	return query, args

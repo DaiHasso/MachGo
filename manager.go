@@ -127,6 +127,7 @@ func (m *Manager) FindObjects(
 	queryObject Object,
 ) (interface{}, error) {
 	queryTemplate := `SELECT * FROM %s %s`
+	whereTemplate := `WHERE %s`
 
 	nameTagValueInterfaces := GetFieldsByTagWithTagValues(queryObject, "db")
 
@@ -153,7 +154,7 @@ func (m *Manager) FindObjects(
 			whereClause = newWhereClause
 			whereValues = append(whereValues, newWhereValues...)
 		}
-		whereClause = fmt.Sprintf(`WHERE %s`, whereClause)
+		whereClause = fmt.Sprintf(whereTemplate, whereClause)
 	} else {
 		return nil, errors.New(
 			"provided object is neither an IDObject nor a " +
@@ -335,7 +336,11 @@ func (m *Manager) UpdateObject(obj Object) error {
 			}
 
 			if compositeObj != nil {
-				newWhereValues, newWhereClause, err := buildCompositeWhereClause(
+				var (
+					newWhereValues []interface{}
+					newWhereClause string
+				)
+				newWhereValues, newWhereClause, err = buildCompositeWhereClause(
 					compositeObj,
 					tagValueInterface,
 					whereClause,
@@ -483,17 +488,17 @@ func (m *Manager) objectTransaction(
 // failure.
 func (m *Manager) Transactionized(
 	fn func(*sqlx.Tx) error,
-) error {
+) (err error) {
 	var tx *sqlx.Tx
 
 	rollBack := func(tx *sqlx.Tx, oldError error) error {
 		if tx != nil {
-			err := tx.Rollback()
-			if err != nil {
+			newErr := tx.Rollback()
+			if newErr != nil {
 				logging.Error("Failed to rollback transaction.").
 					With("error", err).
 					Send()
-				return err
+				return newErr
 			}
 		}
 
@@ -501,14 +506,13 @@ func (m *Manager) Transactionized(
 	}
 
 	// Recover if something crazy happens.
-	defer func() error {
+	defer func() {
 		if r := recover(); r != nil {
-			return translateDBError(rollBack(tx, fmt.Errorf("%s", r)))
+			err = translateDBError(rollBack(tx, fmt.Errorf("%s", r)))
 		}
-		return nil
 	}()
 
-	tx, err := m.Beginx()
+	tx, err = m.Beginx()
 	if err != nil {
 		logging.Error("Error beginning transaction.").
 			With("error", fmt.Sprint(err)).
@@ -526,7 +530,7 @@ func (m *Manager) Transactionized(
 	}
 
 	err = tx.Commit()
-	return err
+	return
 }
 
 // GetDatabaseManager will init and retrieve a mysql database.

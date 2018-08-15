@@ -30,7 +30,11 @@ var _ = BeforeSuite(func() {
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable2",
 		relationships: []dsl.Relationship{
-			dsl.Relationship{object1.table, "foo", "bar"},
+			dsl.Relationship{
+				Target:       object1.table,
+				SelfColumn:   "foo",
+				TargetColumn: "bar",
+			},
 		},
 	}
 
@@ -38,7 +42,11 @@ var _ = BeforeSuite(func() {
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable3",
 		relationships: []dsl.Relationship{
-			dsl.Relationship{object1.table, "baz", "test"},
+			dsl.Relationship{
+				Target:       object1.table,
+				SelfColumn:   "baz",
+				TargetColumn: "test",
+			},
 		},
 	}
 
@@ -46,7 +54,11 @@ var _ = BeforeSuite(func() {
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable4",
 		relationships: []dsl.Relationship{
-			dsl.Relationship{object3.table, "baz2", "test2"},
+			dsl.Relationship{
+				Target:       object3.table,
+				SelfColumn:   "baz2",
+				TargetColumn: "test2",
+			},
 		},
 	}
 
@@ -54,7 +66,11 @@ var _ = BeforeSuite(func() {
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable5",
 		relationships: []dsl.Relationship{
-			dsl.Relationship{object3.table, "baz3", "test3"},
+			dsl.Relationship{
+				Target:       object3.table,
+				SelfColumn:   "baz3",
+				TargetColumn: "test3",
+			},
 		},
 	}
 })
