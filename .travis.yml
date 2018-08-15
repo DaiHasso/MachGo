@@ -10,9 +10,15 @@ before_install:
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
+  # Lint stuff
   - go get -u github.com/alecthomas/gometalinter
+  - go get -u github.com/kisielk/errcheck
+  - go get github.com/securego/gosec/cmd/gosec/...
+  # Dep
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh  
 
 install:
+  - dep ensure
   # Add Godeps dependencies to GOPATH and PATH
   - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
   - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
