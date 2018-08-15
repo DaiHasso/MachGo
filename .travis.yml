@@ -11,6 +11,7 @@ before_install:
   - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
   - go get -u gopkg.in/alecthomas/gometalinter.v2
+  - alias gometalinter="gometalinter.v2"
 
 install:
   # Add Godeps dependencies to GOPATH and PATH
