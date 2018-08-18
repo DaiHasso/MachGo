@@ -13,19 +13,13 @@ type UnexportedDefaultAttributes struct {
 	Updated types.Timestamp `db:"updated" json:"-"`
 }
 
-func (j *UnexportedDefaultAttributes) created() types.Timestamp {
-	return j.Created
-}
-
-func (j *UnexportedDefaultAttributes) updated() types.Timestamp {
-	return j.Updated
-}
-
-func (j *UnexportedDefaultAttributes) update() {
+// Update will update the updated time.
+func (j *UnexportedDefaultAttributes) Update() {
 	j.Updated = types.Timestamp{Time: time.Now()}
 }
 
-func (j *UnexportedDefaultAttributes) init() {
+// Init will initialize the created time and updated time.
+func (j *UnexportedDefaultAttributes) Init() {
 	j.Created = types.Timestamp{Time: time.Now()}
-	j.update()
+	j.Update()
 }

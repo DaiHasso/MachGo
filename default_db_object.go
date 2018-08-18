@@ -6,7 +6,7 @@ import (
 
 // DefaultDBObject is a basic object with standard implementations.
 type DefaultDBObject struct {
-	jsonExportedDefaultAttributes
+	JSONExportedDefaultAttributes
 	DefaultDiffable
 	ID *IntID `json:"id" db:"id"`
 
@@ -60,9 +60,9 @@ func (bo *DefaultDBObject) NewID() ID {
 // PreInsertActions will initialize the default attributes.
 func (bo *DefaultDBObject) PreInsertActions() (err error) {
 	if bo.IsSaved() {
-		bo.jsonExportedDefaultAttributes.update()
+		bo.JSONExportedDefaultAttributes.Update()
 	} else {
-		bo.jsonExportedDefaultAttributes.init()
+		bo.JSONExportedDefaultAttributes.Init()
 	}
 
 	return

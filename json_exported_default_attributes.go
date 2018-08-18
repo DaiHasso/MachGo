@@ -6,24 +6,20 @@ import (
 	"github.com/DaiHasso/MachGo/types"
 )
 
-type jsonExportedDefaultAttributes struct {
+// JSONExportedDefaultAttributes is a set of sensible default attributes that
+// are serialized into json.
+type JSONExportedDefaultAttributes struct {
 	Created types.Timestamp `db:"created" json:"created,omitempty"`
 	Updated types.Timestamp `db:"updated" json:"updated,omitempty"`
 }
 
-func (j *jsonExportedDefaultAttributes) created() types.Timestamp {
-	return j.Created
-}
-
-func (j *jsonExportedDefaultAttributes) updated() types.Timestamp {
-	return j.Updated
-}
-
-func (j *jsonExportedDefaultAttributes) update() {
+// Update will initialize the updated time.
+func (j *JSONExportedDefaultAttributes) Update() {
 	j.Updated = types.Timestamp{Time: time.Now()}
 }
 
-func (j *jsonExportedDefaultAttributes) init() {
+// Init will initialize the created & updated time.
+func (j *JSONExportedDefaultAttributes) Init() {
 	j.Created = types.Timestamp{Time: time.Now()}
-	j.update()
+	j.Update()
 }

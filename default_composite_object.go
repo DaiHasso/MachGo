@@ -4,7 +4,7 @@ import "errors"
 
 // DefaultCompositeDBObject is a basic object with standard implementations.
 type DefaultCompositeDBObject struct {
-	jsonExportedDefaultAttributes
+	JSONExportedDefaultAttributes
 	DefaultDiffable
 
 	saved bool
@@ -24,9 +24,9 @@ func (bo *DefaultCompositeDBObject) SetSaved(saved bool) {
 // PreInsertActions will initialize the default attributes.
 func (bo *DefaultCompositeDBObject) PreInsertActions() (err error) {
 	if bo.IsSaved() {
-		bo.jsonExportedDefaultAttributes.update()
+		bo.JSONExportedDefaultAttributes.Update()
 	} else {
-		bo.jsonExportedDefaultAttributes.init()
+		bo.JSONExportedDefaultAttributes.Init()
 	}
 
 	return

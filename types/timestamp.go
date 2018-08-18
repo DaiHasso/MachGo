@@ -20,7 +20,7 @@ func (t Timestamp) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON will read a timestamp from json.
-func (t Timestamp) UnmarshalJSON(source []byte) error {
+func (t *Timestamp) UnmarshalJSON(source []byte) error {
 	i, err := strconv.ParseInt(string(source), 10, 64)
 	if err != nil {
 		return err
