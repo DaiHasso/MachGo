@@ -496,7 +496,8 @@ func (m *Manager) Transactionized(
 			newErr := tx.Rollback()
 			if newErr != nil {
 				logging.Error("Failed to rollback transaction.").
-					With("error", err).
+					With("rollback_error", newErr).
+					With("initial_error", oldError).
 					Send()
 				return newErr
 			}
