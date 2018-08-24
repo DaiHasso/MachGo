@@ -108,9 +108,9 @@ func GetInterfaceName(in interface{}) string {
 	return resolvedName + t.Name()
 }
 
-// getObjectSlice For some arbitrary object get an interface that
+// GetObjectSlice For some arbitrary object get an interface that
 // represents a slice of its type.
-func getObjectSlice(obj Object) interface{} {
+func GetObjectSlice(obj Object) interface{} {
 	ptr := reflect.New(reflect.SliceOf(reflect.TypeOf(obj)))
 	iface := ptr.Interface()
 

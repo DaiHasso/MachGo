@@ -176,7 +176,7 @@ func (m *Manager) FindObjects(
 		With("values", whereValues).
 		Send()
 
-	iface := getObjectSlice(queryObject)
+	iface := GetObjectSlice(queryObject)
 
 	err := m.Select(iface, query, whereValues...)
 	if err != nil {
