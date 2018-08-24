@@ -12,6 +12,7 @@ import (
 
 	logging "github.com/daihasso/slogging"
 	"github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx/reflectx"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -19,9 +20,12 @@ const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 var columnNamespaceRegex = regexp.MustCompile(`^([^\.]+)\.([^\.]+)$`)
 
 // QuerySequence is an object that builds a query.
+// TODO: All these maps should probably be something more clever.
 type QuerySequence struct {
 	objects,
 	joinedObjects []database.Object
+	typeAliasMap  map[reflect.Type]string
+	aliasTypeMap  map[string]reflect.Type
 	tableAliasMap  map[string]string
 	aliasObjectMap map[string]database.Object
 	columnAliasMap,
@@ -85,6 +89,8 @@ func newQuerySequence() *QuerySequence {
 	return &QuerySequence{
 		make([]database.Object, 0),
 		make([]database.Object, 0),
+		make(map[reflect.Type]string, 0),
+		make(map[string]reflect.Type, 0),
 		make(map[string]string, 0),
 		make(map[string]database.Object, 0),
 		make(map[string]string, 0),
@@ -142,6 +148,12 @@ func (self *QuerySequence) makeAliasesForObjects(objects ...database.Object) {
 		alias := string(alphabet[self.objectAliasCounter])
 		self.aliasObjectMap[alias] = object
 		self.tableAliasMap[object.GetTableName()] = alias
+
+		// NOTE: Does the type map cover all the uses for the object map?
+		// TODO: Check if ptr before indirecting.
+		objType := reflect.Indirect(reflect.ValueOf(object)).Type()
+		self.typeAliasMap[objType] = alias
+		self.aliasTypeMap[alias] = objType
 
 		self.objectAliasCounter++
 	}
@@ -261,6 +273,110 @@ func (self QuerySequence) QueryInterface() ([][]interface{}, error) {
 	}
 
 	return results, self.manager.Transactionized(action)
+}
+
+// IntoObjects reads the query results and produces objects if it finds matches
+// in its known objects.
+// TODO: This probably should only check the selected objects not all known
+//       objects.
+// TODO: This should complain about or handle mixes of non-namespaced and
+//       namespaced content.
+// TODO: This needs optimization to not be checking all the columns against all
+//       the known objects for every row.
+// TODO: This needs to signify in some way what order the returned objects are
+//       in or maybe just return them in select-order.
+func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
+	var objs [][]interface{}
+
+	action := func(tx *sqlx.Tx) error {
+		query, variables := self.buildQuery()
+
+		query = self.manager.Rebind(query)
+
+		rows, err := tx.Query(query, variables...)
+		if err != nil {
+			return err
+		}
+
+		columNames, err := rows.Columns()
+		if err != nil {
+			return err
+		}
+
+		for rows.Next() {
+			resultTypes := make(map[reflect.Type]reflect.Value, 0)
+			values := make([]interface{}, 0)
+			rowObjs := make([]interface{}, 0)
+
+			for _, column := range columNames {
+				columnNS := namespacedColumnFromString(column)
+				fmt.Println(columnNS)
+				if columnNS.isNamespaced {
+					namespaceType := self.aliasTypeMap[columnNS.tableNamespace]
+
+					var targetObj reflect.Value
+					if obj, ok := resultTypes[namespaceType]; ok {
+						fmt.Println("existing")
+						targetObj = obj
+					} else if namespaceType != nil {
+						targetObj = reflect.New(namespaceType)
+						resultTypes[namespaceType] = targetObj
+						objPtr := targetObj.Interface()
+						objCoerced := objPtr
+						rowObjs = append(rowObjs, objCoerced)
+					} else {
+						// TODO: This might be a failure, maybe have a flag for
+						//       wether it's a failure?
+						int := new(interface{})
+						values = append(values, int)
+						continue
+					}
+					fieldName := string(
+						string(unicode.ToUpper(rune(columnNS.columnName[0]))) +
+						columnNS.columnName[1:],
+					)
+
+					field := reflect.Indirect(targetObj).FieldByName(fieldName)
+
+					fmt.Println(fieldName)
+					fmt.Printf("%s\n", field)
+
+					if field.IsValid() {
+						// Stole from reflectx
+						// https://github.com/jmoiron/sqlx/blob/master/reflectx/reflect.go#L206
+						if field.Kind() == reflect.Ptr && field.IsNil() {
+							alloc := reflect.New(reflectx.Deref(field.Type()))
+							field.Set(alloc)
+						}
+						if field.Kind() == reflect.Map && field.IsNil() {
+							field.Set(reflect.MakeMap(field.Type()))
+						}
+
+						values = append(values, field.Addr().Interface())
+					} else {
+						int := new(interface{})
+						values = append(values, int)
+					}
+				} else {
+					int := new(interface{})
+					values = append(values, int)
+				}
+			}
+
+			fmt.Printf("values: %s\n",values)
+
+			err = rows.Scan(values...)
+			if err != nil {
+				return err
+			}
+
+			objs = append(objs, rowObjs)
+		}
+
+		return nil
+	}
+
+	return objs, self.manager.Transactionized(action)
 }
 
 // TODO: Make a function for querying into a provided set of objects.

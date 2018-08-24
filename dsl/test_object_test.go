@@ -9,6 +9,7 @@ type testObject struct {
 	database.DefaultDBObject
 	table         string
 	relationships []Relationship
+	Id int `db:"id"`
 }
 
 func (self *testObject) GetTableName() string {
