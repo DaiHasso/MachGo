@@ -8,7 +8,8 @@ import (
 	"sort"
 	"unicode"
 
-	database "github.com/DaiHasso/MachGo"
+	"github.com/DaiHasso/MachGo"
+	"github.com/DaiHasso/MachGo/database"
 	"github.com/DaiHasso/MachGo/refl"
 
 	logging "github.com/daihasso/slogging"
@@ -23,11 +24,11 @@ var columnNamespaceRegex = regexp.MustCompile(`^([^\.]+)\.([^\.]+)$`)
 // TODO: All these maps should probably be something more clever.
 type QuerySequence struct {
 	objects,
-	joinedObjects []database.Object
+	joinedObjects []MachGo.Object
 	typeAliasMap  map[reflect.Type]string
 	aliasTypeMap  map[string]reflect.Type
 	tableAliasMap  map[string]string
-	aliasObjectMap map[string]database.Object
+	aliasObjectMap map[string]MachGo.Object
 	columnAliasMap,
 	aliasTableMap map[string]string
 	objectAliasCounter      int
@@ -62,11 +63,11 @@ func namespacedColumnFromString(raw string) NamespacedColumn {
 
 type joinExpression struct {
 	fromObject,
-	toObject database.Object
+	toObject MachGo.Object
 	relationship *Relationship
 }
 
-func ObjectColumn(obj database.Object, column string) NamespacedColumn {
+func ObjectColumn(obj MachGo.Object, column string) NamespacedColumn {
 	columnString := column
 	if unicode.IsUpper(rune(column[0])) {
 		field, found := reflect.TypeOf(obj).FieldByName(column)
@@ -88,12 +89,12 @@ func ObjectColumn(obj database.Object, column string) NamespacedColumn {
 
 func newQuerySequence() *QuerySequence {
 	return &QuerySequence{
-		objects: make([]database.Object, 0),
-		joinedObjects: make([]database.Object, 0),
+		objects: make([]MachGo.Object, 0),
+		joinedObjects: make([]MachGo.Object, 0),
 		typeAliasMap: make(map[reflect.Type]string, 0),
 		aliasTypeMap: make(map[string]reflect.Type, 0),
 		tableAliasMap: make(map[string]string, 0),
-		aliasObjectMap: make(map[string]database.Object, 0),
+		aliasObjectMap: make(map[string]MachGo.Object, 0),
 		columnAliasMap: make(map[string]string, 0),
 		aliasTableMap: make(map[string]string, 0),
 		objectAliasCounter: 0,
@@ -113,7 +114,7 @@ func NewQuerySequence() *QuerySequence {
 }
 
 // NewJoin creates a new QuerySequence with a join.
-func NewJoin(objects ...database.Object) *QuerySequence {
+func NewJoin(objects ...MachGo.Object) *QuerySequence {
 
 	querySequence := newQuerySequence()
 
@@ -123,14 +124,14 @@ func NewJoin(objects ...database.Object) *QuerySequence {
 }
 
 // Join adds object to the QuerySequence's join.
-func (self *QuerySequence) Join(objects ...database.Object) *QuerySequence {
+func (self *QuerySequence) Join(objects ...MachGo.Object) *QuerySequence {
 	self.addObjects(objects...)
 	self.joinedObjects = append(self.joinedObjects, objects...)
 
 	return self
 }
 
-func (self *QuerySequence) addObjects(objects ...database.Object) {
+func (self *QuerySequence) addObjects(objects ...MachGo.Object) {
 	self.makeAliasesForObjects(objects...)
 	self.objects = append(
 		self.objects,
@@ -138,7 +139,7 @@ func (self *QuerySequence) addObjects(objects ...database.Object) {
 	)
 }
 
-func (self *QuerySequence) makeAliasesForObjects(objects ...database.Object) {
+func (self *QuerySequence) makeAliasesForObjects(objects ...MachGo.Object) {
 	for _, object := range objects {
 		if self.objectAliasCounter > len(alphabet) {
 			// TODO: Make this account for doubled aliases like aa, ab, etc.
@@ -190,7 +191,7 @@ func (self *QuerySequence) Select(columns ...string) *QuerySequence {
 }
 
 // SelectObject selects data pertaining to the given object.
-func (self *QuerySequence) SelectObject(objects ...database.Object) *QuerySequence {
+func (self *QuerySequence) SelectObject(objects ...MachGo.Object) *QuerySequence {
 	columnExpressions := make([]SelectColumnExpression, 0)
 
 	for i, object := range objects {
@@ -483,17 +484,17 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 
 func (self *QuerySequence) solveJoin() []joinExpression {
 	results := make([]joinExpression, 0)
-	matches := make(map[database.Object][]database.Object, 0)
+	matches := make(map[MachGo.Object][]MachGo.Object, 0)
 	for _, toObject := range self.joinedObjects {
 		if _, ok := matches[toObject]; !ok {
-			matches[toObject] = make([]database.Object, 0)
+			matches[toObject] = make([]MachGo.Object, 0)
 		} else {
 			continue
 		}
 	ToLoop:
 		for _, fromObject := range self.joinedObjects {
 			if _, ok := matches[fromObject]; !ok {
-				matches[fromObject] = make([]database.Object, 0)
+				matches[fromObject] = make([]MachGo.Object, 0)
 			}
 
 			if objectMatches, ok := matches[fromObject]; ok {
@@ -536,9 +537,9 @@ func (self *QuerySequence) solveJoin() []joinExpression {
 	return results
 }
 
-func findRelationshipBetweenObjects(object1, object2 database.Object) (
+func findRelationshipBetweenObjects(object1, object2 MachGo.Object) (
 	chosenObject,
-	otherObject database.Object,
+	otherObject MachGo.Object,
 	chosenRelationship Relationship,
 	err error,
 ) {

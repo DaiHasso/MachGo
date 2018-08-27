@@ -10,7 +10,7 @@ import (
     . "github.com/onsi/gomega"
 
     sqlmock "github.com/DATA-DOG/go-sqlmock"
-    database "github.com/DaiHasso/MachGo"
+    "github.com/DaiHasso/MachGo/database"
     "github.com/DaiHasso/MachGo/dsl"
 )
 

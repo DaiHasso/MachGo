@@ -1,4 +1,4 @@
-package MachGo
+package database
 
 import (
 	"errors"

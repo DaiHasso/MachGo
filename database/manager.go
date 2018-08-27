@@ -1,4 +1,4 @@
-package MachGo
+package database
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/DaiHasso/MachGo/refl"
+	. "github.com/DaiHasso/MachGo"
 )
 
 // Manager is a database wrapper with a few helpful tools
