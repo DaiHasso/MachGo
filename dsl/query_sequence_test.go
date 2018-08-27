@@ -4,6 +4,7 @@ import (
     "database/sql"
     "database/sql/driver"
     "fmt"
+    "time"
 
     . "github.com/onsi/ginkgo"
     . "github.com/onsi/gomega"
@@ -169,11 +170,12 @@ var _ = Describe("QuerySequence", func() {
             expectedQ := `SELECT a.* FROM testtable2 b JOIN ` +
                 `testtable1 a ON b\.foo=a\.bar`
 
-            expectedRow1 := []driver.Value{1}
-            expectedRow2 := []driver.Value{2}
-            //allExpected := [][]driver.Value{expectedRow1, expectedRow2}
+            expectedRow1 := []driver.Value{1, "foo"}
+            expectedRow2 := []driver.Value{2, "bar"}
+            allIDs := []driver.Value{expectedRow1[0], expectedRow2[0]}
             expectedRows := sqlmock.NewRows([]string{
                 "a.id",
+                "a.name",
             }).AddRow(expectedRow1...).AddRow(expectedRow2...)
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
@@ -183,13 +185,16 @@ var _ = Describe("QuerySequence", func() {
             Expect(err).NotTo(HaveOccurred())
 
             for i, result := range(values) {
-                Expect(len(result)).To(Equal(1))
+                Expect(len(result)).To(
+                    Equal(1),
+                    "Should only have one result per row.",
+                )
                 testObj := (result[0]).(*testObject)
-                Expect(testObj.Id).To(Equal(i+1))
                 fmt.Fprintf(GinkgoWriter, "Result %d:\n%+v\n", i, testObj)
+                Expect(allIDs).To(ContainElement(testObj.Id))
             }
         })
-        It("Should be able to to handle erroneous data", func() {
+        It("Should error on erroneous data", func() {
             qs := dsl.NewJoin(
                 object1,
                 object2,
@@ -207,16 +212,79 @@ var _ = Describe("QuerySequence", func() {
             }).AddRow(expectedRow1...).AddRow(expectedRow2...)
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
-            mock.ExpectCommit()
+            mock.ExpectRollback()
 
             values, err := qs.IntoObjects()
-            Expect(err).NotTo(HaveOccurred())
+            Expect(err).To(HaveOccurred())
+            Expect(err.Error()).To(
+                MatchRegexp(
+                    `An object with the alias '[^']+' hasn't been added to ` +
+                        `the query.`,
+                ),
+            )
 
             for i, result := range(values) {
                 Expect(len(result)).To(Equal(1))
                 testObj := (result[0]).(*testObject)
                 Expect(testObj.Id).To(Equal(i+1))
                 fmt.Fprintf(GinkgoWriter, "Result %d:\n%+v\n", i, testObj)
+            }
+        })
+        It("Multiple ojects should be sorted in select order", func() {
+            qs := dsl.NewJoin(
+                object1,
+                object2,
+                object6,
+            ).SelectObject(
+                object1,
+                object6,
+                object2,
+            ).SetManager(manager)
+            expectedQ := `SELECT a.* FROM testtable2 b JOIN ` +
+                `testtable1 a ON b\.foo=a\.bar`
+
+            expectedRow1 := []driver.Value{
+                1,
+                "bar",
+                time.Date(2001, time.November, 13, 0, 0, 0, 0, time.UTC),
+            }
+            expectedRow2 := []driver.Value{
+                2,
+                "foo",
+                time.Date(2004, time.November, 17, 0, 0, 0, 0, time.UTC),
+            }
+            expectedRows := sqlmock.NewRows([]string{
+                "a.id",
+                "b.name",
+                "c.created",
+            }).AddRow(expectedRow1...).AddRow(expectedRow2...)
+            mock.ExpectBegin()
+            mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
+            mock.ExpectCommit()
+
+            values, err := qs.IntoObjects()
+            Expect(err).NotTo(HaveOccurred())
+
+            for i, result := range(values) {
+                Expect(len(result)).To(Equal(3))
+                fmt.Fprintf(GinkgoWriter, "Result %d:\n%+v\n", i, result)
+                for i, obj := range result {
+                    if i == 1 {
+                        testObj, ok := obj.(*testObjectWithCreated)
+                        Expect(ok).To(
+                            Equal(true),
+                            "Second object isn't a testObjectWithCreated.",
+                        )
+                        fmt.Fprintf(GinkgoWriter, "%+v\n", testObj)
+                    } else {
+                        testObj, ok := obj.(*testObject)
+                        Expect(ok).To(
+                            Equal(true),
+                            "Other object isn't a testObject.",
+                        )
+                        fmt.Fprintf(GinkgoWriter, "%+v\n", testObj)
+                    }
+                }
             }
         })
     })
