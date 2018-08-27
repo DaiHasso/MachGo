@@ -496,8 +496,8 @@ func (m *Manager) Transactionized(
 			newErr := tx.Rollback()
 			if newErr != nil {
 				logging.Error("Failed to rollback transaction.").
-					With("rollback_error", newErr).
-					With("initial_error", oldError).
+					With("rollback_error", newErr.Error()).
+					With("initial_error", oldError.Error()).
 					Send()
 				return newErr
 			}
@@ -523,7 +523,6 @@ func (m *Manager) Transactionized(
 
 	err = fn(tx)
 	if err != nil {
-		fmt.Println(err)
 		logging.Error("Error running transaction.").
 			With("error", fmt.Sprint(err)).
 			Send()
