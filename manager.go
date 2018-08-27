@@ -9,6 +9,7 @@ import (
 	logging "github.com/daihasso/slogging"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/DaiHasso/MachGo/refl"
 )
 
 // Manager is a database wrapper with a few helpful tools
@@ -54,7 +55,7 @@ func (m *Manager) GetObject(obj Object, id ID) error {
 func (m *Manager) FindObject(obj IDObject) error {
 	queryTemplate := `SELECT * FROM %s %s`
 
-	nameTagValueInterfaces := GetFieldsByTagWithTagValues(obj, "db")
+	nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
 	var whereClause []byte
 	var variableValues []interface{}
@@ -129,7 +130,10 @@ func (m *Manager) FindObjects(
 	queryTemplate := `SELECT * FROM %s %s`
 	whereTemplate := `WHERE %s`
 
-	nameTagValueInterfaces := GetFieldsByTagWithTagValues(queryObject, "db")
+	nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(
+		queryObject,
+		"db",
+	)
 
 	var whereClause string
 	var whereValues []interface{}
@@ -176,7 +180,7 @@ func (m *Manager) FindObjects(
 		With("values", whereValues).
 		Send()
 
-	iface := GetObjectSlice(queryObject)
+	iface := refl.GetInterfaceSlice(queryObject)
 
 	err := m.Select(iface, query, whereValues...)
 	if err != nil {
@@ -210,7 +214,7 @@ func (m *Manager) SaveObject(obj Object) error {
 		}
 		queryTemplate := `INSERT INTO %s (%s) VALUES (%s)`
 
-		nameTagValueInterfaces := GetFieldsByTagWithTagValues(obj, "db")
+		nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
 		var variableNames, variableBindVars []byte
 		var variableValues []interface{}
@@ -260,7 +264,7 @@ func (m *Manager) SaveObject(obj Object) error {
 
 		logging.Debug("Running save object query.").
 			With("query", query).
-			With("object_type", GetInterfaceName(obj)).
+			With("object_type", refl.GetInterfaceName(obj)).
 			With("values", variableValues).
 			Send()
 
@@ -322,7 +326,7 @@ func (m *Manager) UpdateObject(obj Object) error {
 			panic(err)
 		}
 
-		nameTagValueInterfaces := GetFieldsByTagWithTagValues(obj, "db")
+		nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
 		diffable, isDiffable := obj.(Diffable)
 
@@ -408,7 +412,7 @@ func (m *Manager) DeleteObject(obj Object) error {
 		var whereClause string
 		var whereValues []interface{}
 
-		nameTagValueInterfaces := GetFieldsByTagWithTagValues(obj, "db")
+		nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
 		if result, ok := obj.(IDObject); ok {
 			newWhereClause, newWhereValues := buildIDWhereClause(
@@ -640,7 +644,7 @@ func insertAndSetID(
 }
 
 func buildIDWhereClause(
-	nameTagValueInterfaces map[string]TagValueInterface,
+	nameTagValueInterfaces map[string]refl.TagValueInterface,
 	id driver.Valuer,
 ) ([]byte, []interface{}) {
 	var whereClause []byte
@@ -698,7 +702,7 @@ func buildInitID(id IDAttribute) (string, ID) {
 
 func buildCompositeWhereClause(
 	compositeObj CompositeObject,
-	tagValueInterface TagValueInterface,
+	tagValueInterface refl.TagValueInterface,
 	existingWhereClause string,
 	strict bool,
 ) ([]interface{}, string, error) {

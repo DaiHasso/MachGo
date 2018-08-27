@@ -1,4 +1,4 @@
-package MachGo
+package refl
 
 import (
 	"fmt"
@@ -108,11 +108,28 @@ func GetInterfaceName(in interface{}) string {
 	return resolvedName + t.Name()
 }
 
-// GetObjectSlice For some arbitrary object get an interface that
+// GetInterfaceSlice for some arbitrary interface get an interface that
 // represents a slice of its type.
-func GetObjectSlice(obj Object) interface{} {
-	ptr := reflect.New(reflect.SliceOf(reflect.TypeOf(obj)))
+func GetInterfaceSlice(in interface{}) interface{} {
+	ptr := reflect.New(reflect.SliceOf(reflect.TypeOf(in)))
 	iface := ptr.Interface()
 
 	return iface
+}
+
+// Deref is Indirect for reflect.Types
+// Pulled from sqlx/reflectx: https://tinyurl.com/y9akfp5n
+func Deref(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
+// DerefDeep derefs all the way down.
+func DerefDeep(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
 }

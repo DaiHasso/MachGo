@@ -9,10 +9,10 @@ import (
 	"unicode"
 
 	database "github.com/DaiHasso/MachGo"
+	"github.com/DaiHasso/MachGo/refl"
 
 	logging "github.com/daihasso/slogging"
 	"github.com/jmoiron/sqlx"
-	"github.com/jmoiron/sqlx/reflectx"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -368,10 +368,9 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					field := reflect.Indirect(objVal).FieldByName(fieldName)
 
 					if field.IsValid() {
-						// Stole from reflectx
-						// https://github.com/jmoiron/sqlx/blob/master/reflectx/reflect.go#L206
+						// Stole from reflectx: https://tinyurl.com/yc3lpeam
 						if field.Kind() == reflect.Ptr && field.IsNil() {
-							alloc := reflect.New(reflectx.Deref(field.Type()))
+							alloc := reflect.New(refl.Deref(field.Type()))
 							field.Set(alloc)
 						}
 						if field.Kind() == reflect.Map && field.IsNil() {
