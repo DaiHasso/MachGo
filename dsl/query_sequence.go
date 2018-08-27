@@ -29,9 +29,10 @@ type QuerySequence struct {
 	tableAliasMap  map[string]string
 	aliasObjectMap map[string]database.Object
 	columnAliasMap,
-	aliasColumnMap map[string]string
+	aliasTableMap map[string]string
 	objectAliasCounter      int
 	selectColumnExpressions []SelectColumnExpression
+	selectObjectTables map[string]int
 	whereBuilder            *WhereBuilder
 	manager                 *database.Manager
 }
@@ -87,18 +88,19 @@ func ObjectColumn(obj database.Object, column string) NamespacedColumn {
 
 func newQuerySequence() *QuerySequence {
 	return &QuerySequence{
-		make([]database.Object, 0),
-		make([]database.Object, 0),
-		make(map[reflect.Type]string, 0),
-		make(map[string]reflect.Type, 0),
-		make(map[string]string, 0),
-		make(map[string]database.Object, 0),
-		make(map[string]string, 0),
-		make(map[string]string, 0),
-		0,
-		make([]SelectColumnExpression, 0),
-		nil,
-		nil,
+		objects: make([]database.Object, 0),
+		joinedObjects: make([]database.Object, 0),
+		typeAliasMap: make(map[reflect.Type]string, 0),
+		aliasTypeMap: make(map[string]reflect.Type, 0),
+		tableAliasMap: make(map[string]string, 0),
+		aliasObjectMap: make(map[string]database.Object, 0),
+		columnAliasMap: make(map[string]string, 0),
+		aliasTableMap: make(map[string]string, 0),
+		objectAliasCounter: 0,
+		selectColumnExpressions: make([]SelectColumnExpression, 0),
+		selectObjectTables: make(map[string]int, 0),
+		whereBuilder: nil,
+		manager: nil,
 	}
 }
 
@@ -148,6 +150,7 @@ func (self *QuerySequence) makeAliasesForObjects(objects ...database.Object) {
 		alias := string(alphabet[self.objectAliasCounter])
 		self.aliasObjectMap[alias] = object
 		self.tableAliasMap[object.GetTableName()] = alias
+		self.aliasTableMap[alias] = object.GetTableName()
 
 		// NOTE: Does the type map cover all the uses for the object map?
 		// TODO: Check if ptr before indirecting.
@@ -190,16 +193,19 @@ func (self *QuerySequence) Select(columns ...string) *QuerySequence {
 func (self *QuerySequence) SelectObject(objects ...database.Object) *QuerySequence {
 	columnExpressions := make([]SelectColumnExpression, 0)
 
-	for _, object := range objects {
+	for i, object := range objects {
 		columnExpression := new(SelectColumnExpression)
 		columnExpression.isNamespaced = true
 		columnExpression.columnName = "*"
 		columnExpression.tableNamespace = object.GetTableName()
 
 		columnExpressions = append(columnExpressions, *columnExpression)
+
+		self.selectObjectTables[columnExpression.tableNamespace] = i
 	}
 
 	self.selectColumnExpressions = columnExpressions
+
 
 	return self
 }
@@ -303,43 +309,63 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 			return err
 		}
 
+		resultTypes := make(map[string]reflect.Type, 0)
+		aliasIndexes := make(map[string]int, 0)
+		for _, column := range columNames {
+			columnNS := namespacedColumnFromString(column)
+			if columnNS.isNamespaced {
+				namespaceType := self.aliasTypeMap[columnNS.tableNamespace]
+				if namespaceType == nil {
+					return fmt.Errorf(
+						"An object with the alias '%s' hasn't been added to "+
+							"the query.",
+						columnNS.tableNamespace,
+					)
+				}
+
+				tableName := self.aliasTableMap[columnNS.tableNamespace]
+				index, inSelect := self.selectObjectTables[tableName]
+				if !inSelect {
+					return errors.New("Data not in select returned.")
+				}
+
+				if _, seen := aliasIndexes[columnNS.tableNamespace]; !seen {
+					resultTypes[columnNS.tableNamespace] = namespaceType
+					aliasIndexes[columnNS.tableNamespace] = index
+				}
+			}
+		}
+
+		if len(aliasIndexes) < len(self.selectObjectTables) {
+			return errors.New(
+				"Returned data didn't contain all the columns expected.",
+			)
+		}
+
 		for rows.Next() {
-			resultTypes := make(map[reflect.Type]reflect.Value, 0)
 			values := make([]interface{}, 0)
-			rowObjs := make([]interface{}, 0)
+			rowObjs := make([]interface{}, len(aliasIndexes))
+			aliasVals := make(map[string]reflect.Value, len(aliasIndexes))
+			for alias, objType := range resultTypes {
+				aliasVals[alias] = reflect.New(objType)
+			}
 
 			for _, column := range columNames {
 				columnNS := namespacedColumnFromString(column)
-				fmt.Println(columnNS)
 				if columnNS.isNamespaced {
-					namespaceType := self.aliasTypeMap[columnNS.tableNamespace]
+					index := aliasIndexes[columnNS.tableNamespace]
 
-					var targetObj reflect.Value
-					if obj, ok := resultTypes[namespaceType]; ok {
-						fmt.Println("existing")
-						targetObj = obj
-					} else if namespaceType != nil {
-						targetObj = reflect.New(namespaceType)
-						resultTypes[namespaceType] = targetObj
-						objPtr := targetObj.Interface()
-						objCoerced := objPtr
-						rowObjs = append(rowObjs, objCoerced)
-					} else {
-						// TODO: This might be a failure, maybe have a flag for
-						//       wether it's a failure?
-						int := new(interface{})
-						values = append(values, int)
-						continue
-					}
+					objVal := aliasVals[columnNS.tableNamespace]
+					objPtr := objVal.Interface()
+					objCoerced := objPtr
+					rowObjs[index] = objCoerced
+
 					fieldName := string(
 						string(unicode.ToUpper(rune(columnNS.columnName[0]))) +
 						columnNS.columnName[1:],
 					)
 
-					field := reflect.Indirect(targetObj).FieldByName(fieldName)
-
-					fmt.Println(fieldName)
-					fmt.Printf("%s\n", field)
+					field := reflect.Indirect(objVal).FieldByName(fieldName)
 
 					if field.IsValid() {
 						// Stole from reflectx
@@ -362,8 +388,6 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					values = append(values, int)
 				}
 			}
-
-			fmt.Printf("values: %s\n",values)
 
 			err = rows.Scan(values...)
 			if err != nil {
