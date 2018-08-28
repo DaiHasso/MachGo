@@ -128,10 +128,11 @@ var _ = Describe("QuerySequence", func() {
                     object5,
                 ).SetManager(manager)
 
-                expectedQ := `SELECT a.*, b.*, c.*, d.*, e.* FROM testtable2 b JOIN ` +
-                    `testtable1 a ON b\.foo=a\.bar JOIN testtable3 c ON a\.baz=c\.test ` +
-                    `JOIN testtable4 d ON c\.baz2=d\.test2 JOIN testtable5 e ON ` +
-                    `c.baz3=e\.test3`
+                expectedQ := `SELECT a\.\*, b\.\*, c\.\*, d\.\*, e\.\* ` +
+                    `FROM testtable2 b JOIN testtable1 a ` +
+                    `ON b\.foo=a\.bar JOIN testtable3 c ON a\.baz=c\.test ` +
+                    `JOIN testtable4 d ON c\.baz2=d\.test2 JOIN testtable5 e ` +
+                    `ON c.baz3=e\.test3`
 
                 expectedRow1 := []driver.Value{1, 1, 1, 1, 1}
                 expectedRow2 := []driver.Value{2, 2, 2, 2, 2}
@@ -167,7 +168,7 @@ var _ = Describe("QuerySequence", func() {
             ).SelectObject(
                 object1,
             ).SetManager(manager)
-            expectedQ := `SELECT a.* FROM testtable2 b JOIN ` +
+            expectedQ := `SELECT a\.\* FROM testtable2 b JOIN ` +
                 `testtable1 a ON b\.foo=a\.bar`
 
             expectedRow1 := []driver.Value{1, "foo"}
@@ -201,7 +202,7 @@ var _ = Describe("QuerySequence", func() {
             ).SelectObject(
                 object1,
             ).SetManager(manager)
-            expectedQ := `SELECT a.* FROM testtable2 b JOIN ` +
+            expectedQ := `SELECT a\.\* FROM testtable2 b JOIN ` +
                 `testtable1 a ON b\.foo=a\.bar`
 
             expectedRow1 := []driver.Value{1, 666}
@@ -235,13 +236,15 @@ var _ = Describe("QuerySequence", func() {
                 object1,
                 object2,
                 object6,
+                object3,
             ).SelectObject(
                 object1,
                 object6,
                 object2,
             ).SetManager(manager)
-            expectedQ := `SELECT a.* FROM testtable2 b JOIN ` +
-                `testtable1 a ON b\.foo=a\.bar`
+            expectedQ := `SELECT a\.\*, d\.\*, b\.\* FROM testtable2 b `+
+                `JOIN testtable1 a ON b\.foo=a\.bar JOIN testtable3 d `+
+                `ON a\.baz=d\.test JOIN testtable3 d ON a\.baz=d\.test`
 
             expectedRow1 := []driver.Value{
                 1,
@@ -261,6 +264,9 @@ var _ = Describe("QuerySequence", func() {
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
             mock.ExpectCommit()
+
+            outputString := qs.PrintQuery()
+            fmt.Fprint(GinkgoWriter, outputString)
 
             values, err := qs.IntoObjects()
             Expect(err).NotTo(HaveOccurred())
