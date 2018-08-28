@@ -409,7 +409,7 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 	var selectString, fromString string
 	if len(self.selectColumnExpressions) == 0 {
 		allAliases := make([]string, 0)
-		for alias, _ := range self.aliasObjectMap {
+		for alias := range self.aliasObjectMap {
 			allAliases = append(allAliases, alias)
 		}
 		// Sorting this should make this more easily testable.
