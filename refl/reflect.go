@@ -77,6 +77,34 @@ func GetFieldsByTag(in interface{}, tag string) map[string]interface{} {
 	return nameValues
 }
 
+// GetTagValues will get all the fields tag values as a slice.
+func GetTagValues(in interface{}, tag string, formatters... (func(string) string)) []string {
+	t := reflect.TypeOf(in)
+	v := reflect.ValueOf(in)
+	for t.Kind() == reflect.Ptr {
+		t = Deref(t)
+		v = v.Elem()
+	}
+
+	numFields := v.NumField()
+	tagValues := make([]string, 0)
+
+	for i := 0; i < numFields; i++ {
+		field := t.Field(i)
+
+		if tagVal, ok := field.Tag.Lookup(tag); ok {
+			if len(formatters) != 0 {
+				for _, formatter := range formatters {
+					tagVal = formatter(tagVal)
+				}
+			}
+			tagValues = append(tagValues, tagVal)
+		}
+	}
+
+	return tagValues
+}
+
 // InterfaceToSQLValue will take an interface, and try to cleverly convert it
 // to the best SQL value representation.
 func InterfaceToSQLValue(
