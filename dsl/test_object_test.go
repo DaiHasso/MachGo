@@ -9,7 +9,6 @@ type testObject struct {
 	DefaultDBObject
 	table         string
 	relationships []Relationship
-	Id int `db:"id"`
 	Name string `db:"name"`
 }
 
@@ -17,7 +16,6 @@ type testObjectWithCreated struct {
 	DefaultDBObject
 	table         string
 	relationships []Relationship
-	Id int `db:"id"`
 	Name string `db:"name"`
 	Created types.Timestamp
 }

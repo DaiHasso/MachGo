@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strings"
 	"unicode"
 
 	"github.com/DaiHasso/MachGo"
@@ -19,6 +20,7 @@ import (
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var columnNamespaceRegex = regexp.MustCompile(`^([^\.]+)\.([^\.]+)$`)
+var columnAliasNamespaceRegex = regexp.MustCompile(`^([^_]+)_(.*)$`)
 
 // QuerySequence is an object that builds a query.
 // TODO: All these maps should probably be something more clever.
@@ -51,6 +53,22 @@ func namespacedColumnFromString(raw string) NamespacedColumn {
 	column.columnName = raw
 	if columnNamespaceRegex.MatchString(raw) {
 		results := columnNamespaceRegex.FindStringSubmatch(
+			raw,
+		)
+		column.isNamespaced = true
+		column.tableNamespace = results[1]
+		column.columnName = results[2]
+	}
+
+	return *column
+}
+
+func namespacedColumnAliasString(raw string) NamespacedColumn {
+	column := new(NamespacedColumn)
+	column.isNamespaced = false
+	column.columnName = raw
+	if columnAliasNamespaceRegex.MatchString(raw) {
+		results := columnAliasNamespaceRegex.FindStringSubmatch(
 			raw,
 		)
 		column.isNamespaced = true
@@ -309,19 +327,20 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 			return err
 		}
 
-		if !rows.Next() {
+		hasRows := rows.Next()
+		if ! hasRows {
 			return nil
 		}
 
-		columNames, err := rows.Columns()
+		columnNames, err := rows.Columns()
 		if err != nil {
 			return err
 		}
 
 		resultTypes := make(map[string]reflect.Type, 0)
 		aliasIndexes := make(map[string]int, 0)
-		for _, column := range columNames {
-			columnNS := namespacedColumnFromString(column)
+		for _, column := range columnNames {
+			columnNS := namespacedColumnAliasString(column)
 			if columnNS.isNamespaced {
 				namespaceType := self.aliasTypeMap[columnNS.tableNamespace]
 				if namespaceType == nil {
@@ -346,12 +365,15 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 		}
 
 		if len(aliasIndexes) < len(self.selectObjectTables) {
-			return errors.New(
-				"Returned data didn't contain all the columns expected.",
+			return fmt.Errorf(
+				"Returned data had %s tables in returned data but expected "+
+					"%s tables.",
+				len(aliasIndexes),
+				len(self.selectObjectTables),
 			)
 		}
 
-		for rows.Next() {
+		for hasRows {
 			values := make([]interface{}, 0)
 			rowObjs := make([]interface{}, len(aliasIndexes))
 			aliasVals := make(map[string]reflect.Value, len(aliasIndexes))
@@ -359,8 +381,8 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 				aliasVals[alias] = reflect.New(objType)
 			}
 
-			for _, column := range columNames {
-				columnNS := namespacedColumnFromString(column)
+			for _, column := range columnNames {
+				columnNS := namespacedColumnAliasString(column)
 				if columnNS.isNamespaced {
 					index := aliasIndexes[columnNS.tableNamespace]
 
@@ -369,11 +391,20 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					objCoerced := objPtr
 					rowObjs[index] = objCoerced
 
-					fieldName := string(
-						string(unicode.ToUpper(rune(columnNS.columnName[0]))) +
-						columnNS.columnName[1:],
-					)
+					// TODO: Remove this hacky ID capitalization hack by doing
+					//       the below todo.
+					var fieldName string
+					if columnNS.columnName == "id" {
+						fieldName = strings.ToUpper(columnNS.columnName)
+					} else {
+						fieldName = string(
+							string(unicode.ToUpper(rune(columnNS.columnName[0]))) +
+							columnNS.columnName[1:],
+						)
+					}
 
+					// TODO: This should be by struct db tag instead of just by
+					//       field name or both at least.
 					field := reflect.Indirect(objVal).FieldByName(fieldName)
 
 					if field.IsValid() {
@@ -403,12 +434,40 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 			}
 
 			objs = append(objs, rowObjs)
+
+			hasRows = rows.Next()
 		}
 
 		return nil
 	}
 
 	return objs, self.manager.Transactionized(action)
+}
+
+// NOTE: I think reflectx has something like this, should we be using it?
+func (self QuerySequence) getSelectableColumns(obj MachGo.Object) []string {
+	alias := self.tableAliasMap[obj.GetTableName()]
+	columns := refl.GetTagValues(obj, "db", func(s string) string {
+		return fmt.Sprintf(
+			"%s.%s as %s_%s",
+			alias,
+			s,
+			alias,
+			s,
+		)
+	})
+	// TODO: This is hacky, figure out something more elegant.
+
+	if _, ok := obj.(MachGo.IDAttribute); ok {
+		columns = append(columns, fmt.Sprintf("%s.id as %s_id", alias, alias))
+	}
+
+	if _, ok := obj.(MachGo.DefaultAttributes); ok {
+		columns = append(columns, fmt.Sprintf("%s.created as %s_created", alias, alias))
+		columns = append(columns, fmt.Sprintf("%s.updated %s_updated", alias, alias))
+	}
+
+	return columns
 }
 
 // TODO: Make a function for querying into a provided set of objects.
@@ -436,15 +495,21 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 				line += ", "
 			}
 
-			if selectExp.isNamespaced {
-				if alias, ok := self.tableAliasMap[selectExp.tableNamespace]; ok {
-					line += fmt.Sprintf("%s.", alias)
-				} else {
-					line += fmt.Sprintf("%s.", selectExp.tableNamespace)
+			if selectExp.columnName == "*" {
+				alias := self.tableAliasMap[selectExp.tableNamespace]
+				obj := self.aliasObjectMap[alias]
+				line += strings.Join(self.getSelectableColumns(obj), ", ")
+			} else {
+				if selectExp.isNamespaced {
+					if alias, ok := self.tableAliasMap[selectExp.tableNamespace]; ok {
+						line += fmt.Sprintf("%s.", alias)
+					} else {
+						line += fmt.Sprintf("%s.", selectExp.tableNamespace)
+					}
 				}
-			}
 
-			line += selectExp.columnName
+				line += selectExp.columnName
+			}
 		}
 		selectString += line
 	}

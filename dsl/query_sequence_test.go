@@ -30,7 +30,10 @@ var _ = Describe("QuerySequence", func() {
     })
 
     It("Should be able to override objects in the select", func() {
-        expectedQuery := "SELECT a.*, c.* "+
+        expectedQuery := "SELECT a.name as a_name, a.id as a_id, "+
+            "a.created as a_created, a.updated a_updated, "+
+            "c.name as c_name, c.id as c_id, c.created as c_created, "+
+            "c.updated c_updated "+
             "FROM testtable2 b "+
             "JOIN testtable1 a ON b.foo=a.bar "+
             "JOIN testtable3 c ON a.test=c.baz"
@@ -114,15 +117,19 @@ var _ = Describe("QuerySequence", func() {
                     "JOIN testtable4 d ON c.test2=d.baz2 "+
                     "JOIN testtable5 e ON c.test3=e.baz3"
 
-                expectedRow1 := []driver.Value{1, 1, 1, 1, 1}
-                expectedRow2 := []driver.Value{2, 2, 2, 2, 2}
+                expectedRow1 := []driver.Value{
+                    int64(1), int64(1), int64(1), int64(1), int64(1),
+                }
+                expectedRow2 := []driver.Value{
+                    int64(2), int64(2), int64(2), int64(2), int64(2),
+                }
                 allExpected := [][]driver.Value{expectedRow1, expectedRow2}
                 expectedRows := sqlmock.NewRows([]string{
-                    "b.id",
-                    "a.id",
-                    "c.id",
-                    "d.id",
-                    "e.id",
+                    "b_id",
+                    "a_id",
+                    "c_id",
+                    "d_id",
+                    "e_id",
                 }).AddRow(expectedRow1...).AddRow(expectedRow2...)
                 mock.ExpectBegin()
                 mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
@@ -148,15 +155,17 @@ var _ = Describe("QuerySequence", func() {
             ).SelectObject(
                 object1,
             ).SetManager(manager)
-            expectedQ := `SELECT a\.\* FROM testtable2 b JOIN ` +
-                `testtable1 a ON b\.foo=a\.bar`
+            expectedQ := "SELECT a.name as a_name, a.id as a_id, "+
+                "a.created as a_created, a.updated a_updated "+
+                "FROM testtable2 b "+
+                "JOIN testtable1 a ON b.foo=a.bar"
 
-            expectedRow1 := []driver.Value{1, "foo"}
-            expectedRow2 := []driver.Value{2, "bar"}
+            expectedRow1 := []driver.Value{int64(1), "foo"}
+            expectedRow2 := []driver.Value{int64(2), "bar"}
             allIDs := []driver.Value{expectedRow1[0], expectedRow2[0]}
             expectedRows := sqlmock.NewRows([]string{
-                "a.id",
-                "a.name",
+                "a_id",
+                "a_name",
             }).AddRow(expectedRow1...).AddRow(expectedRow2...)
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
@@ -172,7 +181,9 @@ var _ = Describe("QuerySequence", func() {
                 )
                 testObj := (result[0]).(*testObject)
                 fmt.Fprintf(GinkgoWriter, "Result %d:\n%+v\n", i, testObj)
-                Expect(allIDs).To(ContainElement(testObj.Id))
+                idVal, err := testObj.GetID().Value()
+                Expect(err).NotTo(HaveOccurred())
+                Expect(allIDs).To(ContainElement(idVal))
             }
         })
         It("Should error on erroneous data", func() {
@@ -182,14 +193,15 @@ var _ = Describe("QuerySequence", func() {
             ).SelectObject(
                 object1,
             ).SetManager(manager)
-            expectedQ := `SELECT a\.\* FROM testtable2 b JOIN ` +
-                `testtable1 a ON b\.foo=a\.bar`
+            expectedQ := "SELECT a.name as a_name, a.id as a_id, "+
+                "a.created as a_created, a.updated a_updated "+
+                "FROM testtable2 b JOIN testtable1 a ON b.foo=a.bar"
 
-            expectedRow1 := []driver.Value{1, 666}
-            expectedRow2 := []driver.Value{2, 666}
+            expectedRow1 := []driver.Value{int64(1), int64(666)}
+            expectedRow2 := []driver.Value{int64(2), int64(666)}
             expectedRows := sqlmock.NewRows([]string{
-                "a.id",
-                "c.foo",
+                "a_id",
+                "c_foo",
             }).AddRow(expectedRow1...).AddRow(expectedRow2...)
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
@@ -207,7 +219,7 @@ var _ = Describe("QuerySequence", func() {
             for i, result := range(values) {
                 Expect(len(result)).To(Equal(1))
                 testObj := (result[0]).(*testObject)
-                Expect(testObj.Id).To(Equal(i+1))
+                Expect(testObj.GetID()).To(Equal(i+1))
                 fmt.Fprintf(GinkgoWriter, "Result %d:\n%+v\n", i, testObj)
             }
         })
@@ -228,19 +240,19 @@ var _ = Describe("QuerySequence", func() {
                 "JOIN testtable3 d ON a.test=d.baz"
 
             expectedRow1 := []driver.Value{
-                1,
+                int64(1),
                 "bar",
                 time.Date(2001, time.November, 13, 0, 0, 0, 0, time.UTC),
             }
             expectedRow2 := []driver.Value{
-                2,
+                int64(2),
                 "foo",
                 time.Date(2004, time.November, 17, 0, 0, 0, 0, time.UTC),
             }
             expectedRows := sqlmock.NewRows([]string{
-                "a.id",
-                "b.name",
-                "c.created",
+                "a_id",
+                "b_name",
+                "c_created",
             }).AddRow(expectedRow1...).AddRow(expectedRow2...)
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WillReturnRows(expectedRows)
