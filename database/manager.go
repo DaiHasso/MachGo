@@ -290,11 +290,17 @@ func (m *Manager) SaveObject(obj Object) error {
 
 		obj.SetSaved(true)
 
-		err = obj.PostInsertActions()
 		return err
 	}
 
-	return m.objectTransaction(action, obj)
+	err := m.objectTransaction(action, obj)
+	if err != nil {
+		return err
+	}
+
+	err = obj.PostInsertActions()
+
+	return err
 }
 
 // UpdateObject will take an object and write an appropriate update
