@@ -293,6 +293,10 @@ func (self QuerySequence) QueryInterface() ([][]interface{}, error) {
 // TODO: This needs to signify in some way what order the returned objects are
 //       in or maybe just return them in select-order.
 func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
+	if self.manager == nil {
+		return nil, errors.New("Manager hasn't been set.")
+	}
+
 	var objs [][]interface{}
 
 	action := func(tx *sqlx.Tx) error {
@@ -303,6 +307,10 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 		rows, err := tx.Query(query, variables...)
 		if err != nil {
 			return err
+		}
+
+		if !rows.Next() {
+			return nil
 		}
 
 		columNames, err := rows.Columns()
