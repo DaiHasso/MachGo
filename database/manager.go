@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"runtime"
 	"fmt"
+	"runtime/debug"
 
 	logging "github.com/daihasso/slogging"
 
@@ -514,7 +516,17 @@ func (m *Manager) Transactionized(
 	// Recover if something crazy happens.
 	defer func() {
 		if r := recover(); r != nil {
-			err = translateDBError(rollBack(tx, fmt.Errorf("%s", r)))
+			if runtimeErr, ok := r.(runtime.Error); ok {
+				panic(runtimeErr)
+			}
+
+			stack := debug.Stack()
+			panicErr := fmt.Errorf(
+				"Panic while making db transaction: %+v\n%s",
+				r,
+				stack,
+			)
+			err = translateDBError(rollBack(tx, panicErr))
 		}
 	}()
 
