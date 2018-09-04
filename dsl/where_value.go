@@ -31,7 +31,7 @@ func (self NamespacedColumn) QueryValue(qs *QuerySequence) (
 ) {
 	if self.isNamespaced {
 		tableString := self.tableNamespace
-		if alias, ok := qs.tableAliasMap[self.columnName]; ok {
+		if alias, ok := qs.tableAliasMap[tableString]; ok {
 			tableString = alias
 		}
 

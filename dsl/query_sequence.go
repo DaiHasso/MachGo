@@ -64,7 +64,7 @@ func namespacedColumnFromString(raw string) NamespacedColumn {
 type joinExpression struct {
 	fromObject,
 	toObject MachGo.Object
-	relationship *Relationship
+	relationship *MachGo.Relationship
 }
 
 func ObjectColumn(obj MachGo.Object, column string) NamespacedColumn {
@@ -492,27 +492,27 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 
 func (self *QuerySequence) solveJoin() []joinExpression {
 	results := make([]joinExpression, 0)
-	matches := make(map[MachGo.Object][]MachGo.Object, 0)
+	matches := make(map[string][]MachGo.Object, 0)
 	for _, toObject := range self.joinedObjects {
-		if _, ok := matches[toObject]; !ok {
-			matches[toObject] = make([]MachGo.Object, 0)
+		if _, ok := matches[toObject.GetTableName()]; !ok {
+			matches[toObject.GetTableName()] = make([]MachGo.Object, 0)
 		} else {
 			continue
 		}
 	ToLoop:
 		for _, fromObject := range self.joinedObjects {
-			if _, ok := matches[fromObject]; !ok {
-				matches[fromObject] = make([]MachGo.Object, 0)
+			if _, ok := matches[fromObject.GetTableName()]; !ok {
+				matches[fromObject.GetTableName()] = make([]MachGo.Object, 0)
 			}
 
-			if objectMatches, ok := matches[fromObject]; ok {
+			if objectMatches, ok := matches[fromObject.GetTableName()]; ok {
 				for _, match := range objectMatches {
 					if match == toObject {
 						goto ToLoop
 					}
 				}
 			}
-			if objectMatches, ok := matches[toObject]; ok {
+			if objectMatches, ok := matches[toObject.GetTableName()]; ok {
 				for _, match := range objectMatches {
 					if match == fromObject {
 						goto ToLoop
@@ -523,20 +523,21 @@ func (self *QuerySequence) solveJoin() []joinExpression {
 				continue
 			}
 
-			_, _, relationship, err := findRelationshipBetweenObjects(
+			joinExp, err := findRelationshipBetweenObjects(
 				fromObject,
 				toObject,
 			)
 
 			if err == nil {
-				newJoinExp := joinExpression{
-					fromObject,
+				results = append(results, *joinExp)
+				matches[fromObject.GetTableName()] = append(
+					matches[fromObject.GetTableName()],
 					toObject,
-					&relationship,
-				}
-				results = append(results, newJoinExp)
-				matches[fromObject] = append(matches[fromObject], toObject)
-				matches[toObject] = append(matches[toObject], fromObject)
+				)
+				matches[toObject.GetTableName()] = append(
+					matches[toObject.GetTableName()],
+					fromObject,
+				)
 				break
 			}
 		}
@@ -545,49 +546,72 @@ func (self *QuerySequence) solveJoin() []joinExpression {
 	return results
 }
 
+// TODO: Audit performance. Consider short-circut conditions.
 func findRelationshipBetweenObjects(object1, object2 MachGo.Object) (
-	chosenObject,
-	otherObject MachGo.Object,
-	chosenRelationship Relationship,
-	err error,
+	*joinExpression,
+	error,
 ) {
 	isRelationshipable := false
-	relationshipChosen := false
+	matches := make(map[MachGo.Object][]*joinExpression, 0)
 
-	if relationshipable, ok := object1.(Relationshipable); ok {
+	if relationshipable, ok := object1.(MachGo.Relationshipable); ok {
 		isRelationshipable = true
 
 		for _, relationship := range relationshipable.Relationships() {
 			// TODO: Consider using reflected name to check for names as well.
-			if relationship.Target == object2.GetTableName() {
-				relationshipChosen = true
-				chosenRelationship = relationship
-				break
+			if relationship.TargetTable() == object2.GetTableName() {
+				joinExp := &joinExpression{
+					object1,
+					object2,
+					&relationship,
+				}
+				if matchExps, ok := matches[object1]; ok {
+					matches[object1] = append(matchExps, joinExp)
+				} else {
+					matchExps := make([]*joinExpression, 1)
+					matchExps[0] = joinExp
+					matches[object1] = matchExps
+				}
 			}
 		}
 	}
-	if relationshipable, ok := object2.(Relationshipable); ok {
-		if !relationshipChosen {
-			isRelationshipable = true
-
-			for _, relationship := range relationshipable.Relationships() {
-				// TODO: Consider using reflected name to check for names as well.
-				if relationship.Target == object1.GetTableName() {
-					relationshipChosen = true
-					chosenRelationship = relationship
-					break
+	if relationshipable, ok := object2.(MachGo.Relationshipable); ok {
+		for _, relationship := range relationshipable.Relationships() {
+			// TODO: Consider using reflected name to check for names as well.
+			if relationship.TargetTable() == object1.GetTableName() {
+				joinExp := &joinExpression{
+					object2,
+					object1,
+					&relationship,
+				}
+				if matchExps, ok := matches[object2]; ok {
+					matches[object2] = append(matchExps, joinExp)
+				} else {
+					matchExps := make([]*joinExpression, 1)
+					matchExps[0] = joinExp
+					matches[object2] = matchExps
 				}
 			}
 		}
 	}
 
-	if !isRelationshipable {
-		err = errors.New("none of the objects have relationships")
-	} else if !relationshipChosen {
-		err = errors.New(
-			"no compatibile relationships for these two objects",
-		)
+	if joinExps, ok := matches[object1]; ok {
+		return joinExps[0], nil
+	} else if joinExps, ok := matches[object2]; ok {
+		joinExp := joinExps[0]
+		newJoinExp := &joinExpression{
+			toObject: joinExp.fromObject,
+			fromObject: joinExp.toObject,
+			relationship: joinExp.relationship.Invert(),
+		}
+		return newJoinExp, nil
 	}
 
-	return
+	if !isRelationshipable {
+		return nil, errors.New("none of the objects have relationships")
+	}
+
+	return nil, errors.New(
+		"no compatibile relationships for these two objects",
+	)
 }

@@ -1,13 +1,12 @@
 package dsl_test
 
 import (
-	database "github.com/DaiHasso/MachGo"
-	. "github.com/DaiHasso/MachGo/dsl"
+	. "github.com/DaiHasso/MachGo"
 	"github.com/DaiHasso/MachGo/types"
 )
 
 type testObject struct {
-	database.DefaultDBObject
+	DefaultDBObject
 	table         string
 	relationships []Relationship
 	Id int `db:"id"`
@@ -15,7 +14,7 @@ type testObject struct {
 }
 
 type testObjectWithCreated struct {
-	database.DefaultDBObject
+	DefaultDBObject
 	table         string
 	relationships []Relationship
 	Id int `db:"id"`

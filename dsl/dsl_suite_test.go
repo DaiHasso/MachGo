@@ -5,7 +5,6 @@ import (
 	"log"
 
 	database "github.com/DaiHasso/MachGo"
-	"github.com/DaiHasso/MachGo/dsl"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	logging "github.com/daihasso/slogging"
@@ -38,66 +37,72 @@ var _ = BeforeSuite(func() {
 	object1 = &testObject{
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable1",
-		relationships:   make([]dsl.Relationship, 0),
+		relationships:   make([]database.Relationship, 0),
 	}
 
 	object2 = &testObject{
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable2",
-		relationships: []dsl.Relationship{
-			dsl.Relationship{
-				Target:       object1.table,
-				SelfColumn:   "foo",
-				TargetColumn: "bar",
-			},
-		},
 	}
 
 	object3 = &testObject{
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable3",
-		relationships: []dsl.Relationship{
-			dsl.Relationship{
-				Target:       object1.table,
-				SelfColumn:   "baz",
-				TargetColumn: "test",
-			},
-		},
 	}
 
 	object4 = &testObject{
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable4",
-		relationships: []dsl.Relationship{
-			dsl.Relationship{
-				Target:       object3.table,
-				SelfColumn:   "baz2",
-				TargetColumn: "test2",
-			},
-		},
 	}
 
 	object5 = &testObject{
 		DefaultDBObject: database.DefaultDBObject{},
 		table:           "testtable5",
-		relationships: []dsl.Relationship{
-			dsl.Relationship{
-				Target:       object3.table,
-				SelfColumn:   "baz3",
-				TargetColumn: "test3",
-			},
-		},
 	}
 
 	object6 = &testObjectWithCreated{
 		DefaultDBObject: database.DefaultDBObject{},
-		table:           "testtable3",
-		relationships: []dsl.Relationship{
-			dsl.Relationship{
-				Target:       object1.table,
-				SelfColumn:   "baz",
-				TargetColumn: "test",
-			},
+		table:           "testtable6",
+	}
+
+	object2.relationships = []database.Relationship{
+		database.Relationship{
+			SelfObject: object2,
+			TargetObject: object1,
+			SelfColumn: "foo",
+			TargetColumn: "bar",
+		},
+	}
+	object3.relationships = []database.Relationship{
+		database.Relationship{
+			SelfObject: object3,
+			TargetObject: object1,
+			SelfColumn: "baz",
+			TargetColumn: "test",
+		},
+	}
+	object4.relationships = []database.Relationship{
+		database.Relationship{
+			SelfObject: object4,
+			TargetObject: object3,
+			SelfColumn:   "baz2",
+			TargetColumn: "test2",
+		},
+	}
+	object5.relationships = []database.Relationship{
+		database.Relationship{
+			SelfObject: object5,
+			TargetObject: object3,
+			SelfColumn:   "baz3",
+			TargetColumn: "test3",
+		},
+	}
+	object6.relationships = []database.Relationship{
+		database.Relationship{
+			SelfObject: object6,
+			TargetObject: object1,
+			SelfColumn:   "baz",
+			TargetColumn: "test",
 		},
 	}
 })

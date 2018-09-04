@@ -30,9 +30,10 @@ var _ = Describe("QuerySequence", func() {
     })
 
     It("Should be able to override objects in the select", func() {
-        expectedQuery := "SELECT a.*, c.* FROM testtable2 b JOIN " +
-            "testtable1 a ON b.foo=a.bar JOIN testtable3 c ON " +
-            "a.baz=c.test"
+        expectedQuery := "SELECT a.*, c.* "+
+            "FROM testtable2 b "+
+            "JOIN testtable1 a ON b.foo=a.bar "+
+            "JOIN testtable3 c ON a.test=c.baz"
         expected := fmt.Sprintf(
             expectedFormat,
             expectedQuery,
@@ -51,33 +52,12 @@ var _ = Describe("QuerySequence", func() {
         Expect(outputString).To(Equal(expected))
     })
     It("Should be able to override the select explicitly", func() {
-        expectedQuery := "SELECT a.foo, b.bar FROM testtable2 b " +
-            "JOIN testtable1 a ON b.foo=a.bar JOIN testtable3 c ON " +
-            "a.baz=c.test JOIN testtable4 d ON c.baz2=d.test2 JOIN " +
-            "testtable5 e ON c.baz3=e.test3"
-        expected := fmt.Sprintf(
-            expectedFormat,
-            expectedQuery,
-            []string{},
-        )
-        qs := dsl.NewJoin(object1).Join(
-            object2,
-            object3,
-            object4,
-            object5,
-        ).Select(
-            "testtable1.foo",
-            "testtable2.bar",
-        )
-        outputString := qs.PrintQuery()
-        fmt.Fprint(GinkgoWriter, outputString)
-        Expect(outputString).To(Equal(expected))
-    })
-    It("Should be able to override the select explicitly", func() {
-        expectedQuery := "SELECT a.foo, b.bar FROM testtable2 b " +
-            "JOIN testtable1 a ON b.foo=a.bar JOIN testtable3 c ON " +
-            "a.baz=c.test JOIN testtable4 d ON c.baz2=d.test2 JOIN " +
-            "testtable5 e ON c.baz3=e.test3"
+        expectedQuery := "SELECT a.foo, b.bar "+
+            "FROM testtable2 b "+
+            "JOIN testtable1 a ON b.foo=a.bar "+
+            "JOIN testtable3 c ON a.test=c.baz "+
+            "JOIN testtable4 d ON c.test2=d.baz2 "+
+            "JOIN testtable5 e ON c.test3=e.baz3"
         expected := fmt.Sprintf(
             expectedFormat,
             expectedQuery,
@@ -129,10 +109,10 @@ var _ = Describe("QuerySequence", func() {
                 ).SetManager(manager)
 
                 expectedQ := `SELECT a\.\*, b\.\*, c\.\*, d\.\*, e\.\* ` +
-                    `FROM testtable2 b JOIN testtable1 a ` +
-                    `ON b\.foo=a\.bar JOIN testtable3 c ON a\.baz=c\.test ` +
-                    `JOIN testtable4 d ON c\.baz2=d\.test2 JOIN testtable5 e ` +
-                    `ON c.baz3=e\.test3`
+                    "FROM testtable2 b JOIN testtable1 a ON b.foo=a.bar "+
+                    "JOIN testtable3 c ON a.test=c.baz "+
+                    "JOIN testtable4 d ON c.test2=d.baz2 "+
+                    "JOIN testtable5 e ON c.test3=e.baz3"
 
                 expectedRow1 := []driver.Value{1, 1, 1, 1, 1}
                 expectedRow2 := []driver.Value{2, 2, 2, 2, 2}
@@ -242,9 +222,10 @@ var _ = Describe("QuerySequence", func() {
                 object6,
                 object2,
             ).SetManager(manager)
-            expectedQ := `SELECT a\.\*, d\.\*, b\.\* FROM testtable2 b `+
-                `JOIN testtable1 a ON b\.foo=a\.bar JOIN testtable3 d `+
-                `ON a\.baz=d\.test JOIN testtable3 d ON a\.baz=d\.test`
+            expectedQ := "SELECT a.*, c.*, b.* FROM testtable2 b " +
+                "JOIN testtable1 a ON b.foo=a.bar " +
+                "JOIN testtable6 c ON a.test=c.baz " +
+                "JOIN testtable3 d ON a.test=d.baz"
 
             expectedRow1 := []driver.Value{
                 1,
