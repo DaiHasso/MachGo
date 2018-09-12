@@ -729,10 +729,12 @@ func buildIDWhereClause(
 }
 
 func buildInitID(id IDAttribute) (string, ID) {
-	newID := id.NewID()
-	err := id.SetID(newID)
-	if err != nil {
-		panic(err)
+	if !id.IDIsSet() {
+		newID := id.NewID()
+		err := id.SetID(newID)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return id.GetIDColumn(), id.GetID()
 }
