@@ -105,7 +105,11 @@ func (self *WhereCondition) ToQuery(qs *QuerySequence) (string, []interface{}) {
 	if rightValues != nil {
 		values = append(values, rightValues...)
 	}
-	result += rightString
+	if self.Comparison == In {
+		result += "(" + rightString + ")"
+	} else {
+		result += rightString
+	}
 
 	return result, values
 }
@@ -264,6 +268,12 @@ func (self *WhereBuilder) GreaterEq(values ...WhereValue) *WhereBuilder {
 
 func (self *WhereBuilder) LessEq(values ...WhereValue) *WhereBuilder {
 	self.checkAndSetComparison(LessThanEqual)
+
+	return self
+}
+
+func (self *WhereBuilder) In(values ...WhereValue) *WhereBuilder {
+	self.checkAndSetComparison(In)
 
 	return self
 }
