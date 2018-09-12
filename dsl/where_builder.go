@@ -270,7 +270,7 @@ func (self *WhereBuilder) LessEq(values ...WhereValue) *WhereBuilder {
 
 func (self *WhereBuilder) Const(values ...driver.Value) *WhereBuilder {
 	// TODO: Handle multiple values for in and such.
-	whereValue := ConstantValue{values[0]}
+	whereValue := ConstantValue{values}
 
 	self.setCurrentConditionValue(whereValue)
 

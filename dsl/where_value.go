@@ -62,7 +62,7 @@ func (self NamespacedColumn) Raw() bool {
 
 // ConstantValue is a straight value.
 type ConstantValue struct {
-	value driver.Value
+	values []driver.Value
 }
 
 // Raw is false in this case because the value is a constant.
@@ -72,10 +72,20 @@ func (self ConstantValue) Raw() bool {
 
 // Value just mirrors the Value of the internal variable.
 func (self ConstantValue) Value() (driver.Value, error) {
-	return self.value, nil
+	return self.values, nil
 }
 
 // QueryValue returns a bindvar and the interface value.
 func (self ConstantValue) QueryValue(qs *QuerySequence) (string, []interface{}) {
-	return "?", []interface{}{self.value}
+	values := make([]interface{}, len(self.values))
+
+	var bindvars string
+	for i, value := range self.values {
+		if len(bindvars) > 1 {
+			bindvars += ", "
+		}
+		bindvars += "?"
+		values[i] = value
+	}
+	return bindvars, values
 }
