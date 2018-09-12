@@ -79,6 +79,24 @@ func namespacedColumnAliasString(raw string) NamespacedColumn {
 	return *column
 }
 
+func namespacedColumnToField(nc NamespacedColumn) string {
+	fieldString := ""
+	capitalizeNext := true
+	for i := 0; i < len(nc.columnName); i++ {
+		curChar := nc.columnName[i]
+		if curChar == '_' {
+			capitalizeNext = true
+			continue
+		} else if capitalizeNext {
+			fieldString += string(unicode.ToUpper(rune(curChar)))
+			capitalizeNext = false
+		} else {
+			fieldString += string(curChar)
+		}
+	}
+	return fieldString
+}
+
 type joinExpression struct {
 	fromObject,
 	toObject MachGo.Object
@@ -397,10 +415,7 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					if columnNS.columnName == "id" {
 						fieldName = strings.ToUpper(columnNS.columnName)
 					} else {
-						fieldName = string(
-							string(unicode.ToUpper(rune(columnNS.columnName[0]))) +
-							columnNS.columnName[1:],
-						)
+						fieldName = namespacedColumnToField(columnNS)
 					}
 
 					// TODO: This should be by struct db tag instead of just by
