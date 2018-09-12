@@ -333,7 +333,7 @@ func (m *Manager) UpdateObject(obj Object) error {
 
 		if result, ok := obj.(IDObject); ok {
 			whereClause = "id=?"
-			variableValues = append(variableValues, result.GetID())
+			whereValues = append(variableValues, result.GetID())
 		} else if result, ok := obj.(CompositeObject); ok {
 			compositeObj = result
 		} else {
@@ -398,9 +398,14 @@ func (m *Manager) UpdateObject(obj Object) error {
 			)
 		}
 
+		if len(variableValues) == 0 {
+			logging.Debug("Skipping update because no data has changed.").Send()
+			return nil
+		}
+
 		variableValues = append(
-			whereValues,
-			variableValues...,
+			variableValues,
+			whereValues...,
 		)
 
 		query := fmt.Sprintf(
