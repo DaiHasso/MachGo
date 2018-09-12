@@ -15,6 +15,17 @@ import (
 	. "github.com/DaiHasso/MachGo"
 )
 
+func initDiffable(obj Object) {
+	diffable, isDiffable := obj.(Diffable)
+	if !isDiffable {
+		return
+	}
+	nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
+	for name, tagValueInterface := range nameTagValueInterfaces {
+		diffable.SetLastSavedValue(name, tagValueInterface.Interface)
+	}
+}
+
 // Manager is a database wrapper with a few helpful tools
 // for working with objects.
 type Manager struct {
@@ -22,6 +33,7 @@ type Manager struct {
 
 	databaseType Type
 }
+
 
 // GetObject gets an object by its ID.
 func (m *Manager) GetObject(obj Object, id ID) error {
@@ -49,6 +61,7 @@ func (m *Manager) GetObject(obj Object, id ID) error {
 	}
 
 	obj.SetSaved(true)
+	initDiffable(obj)
 
 	return err
 }
