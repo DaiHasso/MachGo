@@ -139,10 +139,11 @@ func GetInterfaceName(in interface{}) string {
 // GetInterfaceSlice for some arbitrary interface get an interface that
 // represents a slice of its type.
 func GetInterfaceSlice(in interface{}) interface{} {
-	ptr := reflect.New(reflect.SliceOf(reflect.TypeOf(in)))
-	iface := ptr.Interface()
+	slice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(in)), 0, 0)
+	slicePtr := reflect.New(slice.Type())
+	slicePtr.Elem().Set(slice)
 
-	return iface
+	return slicePtr.Interface()
 }
 
 // Deref is Indirect for reflect.Types
