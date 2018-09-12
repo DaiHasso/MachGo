@@ -384,8 +384,8 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 
 		if len(aliasIndexes) < len(self.selectObjectTables) {
 			return fmt.Errorf(
-				"Returned data had %s tables in returned data but expected "+
-					"%s tables.",
+				"Returned data had %d tables in returned data but expected "+
+					"%d tables.",
 				len(aliasIndexes),
 				len(self.selectObjectTables),
 			)
