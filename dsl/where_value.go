@@ -72,6 +72,9 @@ func (self ConstantValue) Raw() bool {
 
 // Value just mirrors the Value of the internal variable.
 func (self ConstantValue) Value() (driver.Value, error) {
+	if len(self.values) == 1 {
+		return self.values[0], nil
+	}
 	return self.values, nil
 }
 
