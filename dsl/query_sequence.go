@@ -33,6 +33,8 @@ type QuerySequence struct {
 	aliasObjectMap map[string]MachGo.Object
 	columnAliasMap,
 	aliasTableMap map[string]string
+	typeBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS
+	fieldNameBSFieldMap refl.GroupedFieldsWithBS
 	objectAliasCounter      int
 	selectColumnExpressions []SelectColumnExpression
 	selectObjectTables map[string]int
@@ -114,10 +116,10 @@ func ObjectColumn(obj MachGo.Object, column string) NamespacedColumn {
 		}
 	}
 	namespacedColumn := NamespacedColumn{
-		true,
-		columnString,
-		"",
-		obj.GetTableName(),
+		isNamespaced: true,
+		columnName: columnString,
+		tableAlias: "",
+		tableNamespace: obj.GetTableName(),
 	}
 
 	return namespacedColumn
@@ -133,6 +135,8 @@ func newQuerySequence() *QuerySequence {
 		aliasObjectMap: make(map[string]MachGo.Object, 0),
 		columnAliasMap: make(map[string]string, 0),
 		aliasTableMap: make(map[string]string, 0),
+		typeBSFieldMap: make(map[reflect.Type]*refl.GroupedFieldsWithBS, 0),
+		fieldNameBSFieldMap: nil,
 		objectAliasCounter: 0,
 		selectColumnExpressions: make([]SelectColumnExpression, 0),
 		selectObjectTables: make(map[string]int, 0),
@@ -173,6 +177,23 @@ func (self *QuerySequence) addObjects(objects ...MachGo.Object) {
 		self.objects,
 		objects...,
 	)
+	self.cacheTagsForType(objects...)
+}
+
+func (self *QuerySequence) cacheTagsForType(objects ...MachGo.Object) {
+	for _, object := range objects {
+		objType := refl.Deref(reflect.TypeOf(object))
+		fieldGroupings := refl.GetGroupedFieldsWithBS(
+			object,
+			refl.GroupFieldsByTagValue("db"),
+			refl.GroupFieldsByFieldName(),
+		)
+		tagValBSFields := fieldGroupings[0]
+		fieldNameBSFields := fieldGroupings[1]
+
+		self.typeBSFieldMap[objType] = tagValBSFields
+		self.fieldNameBSFieldMap = *fieldNameBSFields
+	}
 }
 
 func (self *QuerySequence) makeAliasesForObjects(objects ...MachGo.Object) {
@@ -409,17 +430,21 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					objCoerced := objPtr
 					rowObjs[index] = objCoerced
 
-					// TODO: Remove this hacky ID capitalization hack by doing
-					//       the below todo.
+					objType := refl.Deref(objVal.Type())
+					tagValBSFields := *self.typeBSFieldMap[objType]
+
 					var fieldName string
 					if columnNS.columnName == "id" {
+						// TODO: Fix this hacky usecase. It has something to do
+						//       with the nested struct not populating tags
+						//       maybe?
 						fieldName = strings.ToUpper(columnNS.columnName)
+					} else if bsField, ok := tagValBSFields[columnNS.columnName]; ok {
+						fieldName = bsField.Name()
 					} else {
 						fieldName = namespacedColumnToField(columnNS)
 					}
 
-					// TODO: This should be by struct db tag instead of just by
-					//       field name or both at least.
 					field := reflect.Indirect(objVal).FieldByName(fieldName)
 
 					if field.IsValid() {
