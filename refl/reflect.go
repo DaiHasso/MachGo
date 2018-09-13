@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"reflect"
 	"unicode"
+	"strconv"
+
+	logging "github.com/daihasso/slogging"
 )
 
 // TagValueInterface is a type which holds both a TagValue and an
@@ -161,4 +164,154 @@ func DerefDeep(t reflect.Type) reflect.Type {
 		t = t.Elem()
 	}
 	return t
+}
+
+// GroupedFieldsWithBS is a map of some grouping string to a FieldWithBS.
+type GroupedFieldsWithBS map[string]*FieldWithBS
+
+// GroupFieldWithBSBy takes in a new FieldWithBS and the existing
+// GroupedFieldsWithBS and inserts the FieldWithBs appropriately according to
+// its grouping function.
+type GroupFieldWithBSBy func(*GroupedFieldsWithBS, *FieldWithBS)
+
+// GetGroupedFieldsWithBS takes an interface and returns a series of maps that
+// group FieldWithBS by the provided grouping functions in provided order.
+func GetGroupedFieldsWithBS(
+	in interface{},
+	byFilters ...GroupFieldWithBSBy,
+) []*GroupedFieldsWithBS {
+	v := reflect.ValueOf(in)
+	for v.Kind() == reflect.Ptr {
+		in = reflect.Indirect(v).Interface()
+		v = reflect.ValueOf(in)
+	}
+
+	t := reflect.TypeOf(in)
+
+	numFields := v.NumField()
+	allGroupings := make([]*GroupedFieldsWithBS, len(byFilters))
+	for i := range allGroupings {
+		fieldsWithBS := make(GroupedFieldsWithBS, numFields)
+		allGroupings[i] = &fieldsWithBS
+	}
+
+	for i := 0; i < numFields; i++ {
+		field := t.Field(i)
+		fieldName := field.Name
+
+		if !unicode.IsUpper(rune(fieldName[0])) {
+			continue
+		}
+
+		fieldValue := v.Field(i)
+		tagValues, err := getAllTags(field.Tag)
+		if err != nil {
+			logging.Debug("Corrupt tag encountered.").Send()
+		}
+		fieldWithBS := newFieldWithBS(fieldName, &fieldValue, tagValues)
+		for i, byFilter := range byFilters {
+			byFilter(allGroupings[i], fieldWithBS)
+		}
+	}
+
+	return allGroupings
+}
+
+// GroupFieldsByTagValue is a grouping function that will group all the input
+// FieldWithBS by its tag value.
+func GroupFieldsByTagValue(
+	tagName string,
+) GroupFieldWithBSBy {
+	fn := func(
+		fieldsWithBS *GroupedFieldsWithBS,
+		fieldWithBS *FieldWithBS,
+	) {
+		bsTag := fieldWithBS.Tag(tagName)
+		if bsTag == nil {
+			return
+		}
+		tagValue := bsTag.Value()
+		(*fieldsWithBS)[tagValue] = fieldWithBS
+	}
+	return fn
+}
+
+// GroupFieldsByFieldName is a grouping function that will group all the input
+// FieldWithBS by its field name.
+func GroupFieldsByFieldName() GroupFieldWithBSBy {
+	fn := func(fieldsWithBS *GroupedFieldsWithBS, fieldWithBS *FieldWithBS) {
+		fieldName := fieldWithBS.Name()
+		(*fieldsWithBS)[fieldName] = fieldWithBS
+	}
+	return fn
+}
+
+func getAllTags(
+	tag reflect.StructTag,
+) (map[string]*BSTag, error) {
+	tagBSTags := make(map[string]*BSTag, 0)
+	// Heavily influenced by https://tinyurl.com/ycoqx5hn
+
+	curTagPart := tag
+	for curTagPart != "" {
+		// Skip leading space.
+		i := 0
+		for i < len(curTagPart) && curTagPart[i] == ' ' {
+			i++
+		}
+
+		curTagPart = curTagPart[i:]
+		if curTagPart == "" {
+			break
+		}
+
+
+		// Scan to colon. A space, a quote or a control character is a syntax error.
+		// Strictly speaking, control chars include the range [0x7f, 0x9f], not just
+		// [0x00, 0x1f], but in practice, we ignore the multi-byte control characters
+		// as it is simpler to inspect the tag's bytes than the tag's runes.
+		i = 0
+		for i < len(curTagPart) {
+			curRune := curTagPart[i]
+			if curRune <= ' ' || curRune == ':' || curRune == '"' ||
+				curRune == 0x7f {
+				break
+			}
+			i++
+		}
+
+		if i == 0 || i+1 >= len(curTagPart) ||
+			curTagPart[i] != ':' || curTagPart[i+1] != '"' {
+			break
+		}
+
+		name := string(curTagPart[:i])
+
+		curTagPart = curTagPart[i+1:]
+
+
+		// Scan quoted string to find value.
+		i = 1
+		for i < len(curTagPart) && curTagPart[i] != '"' {
+			if curTagPart[i] == '\\' {
+				i++
+			}
+			i++
+		}
+
+		if i >= len(curTagPart) {
+			break
+		}
+
+		qvalue := string(curTagPart[:i+1])
+		curTagPart = curTagPart[i+1:]
+
+		value, err := strconv.Unquote(qvalue)
+		if err != nil {
+			return tagBSTags, err
+		}
+		tagBSTags[name] = newBSTag(name, value)
+	}
+
+	return tagBSTags, nil
 }
