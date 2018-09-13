@@ -655,7 +655,9 @@ func insertAndSetID(
 			return err
 		}
 
-		intID := IntID{id}
+		intID := IntID{
+			ID: id,
+		}
 
 		err = obj.SetID(&intID)
 		if err != nil {
