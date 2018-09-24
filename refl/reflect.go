@@ -3,8 +3,8 @@ package refl
 import (
 	"fmt"
 	"reflect"
-	"unicode"
 	"strconv"
+	"unicode"
 
 	logging "github.com/daihasso/slogging"
 )
@@ -314,4 +314,27 @@ func getAllTags(
 	}
 
 	return tagBSTags, nil
+}
+
+// ElementTypeFromSlice takes a slice or a pointer to slice and returns the
+// type of its element(s).
+func ElementTypeFromSlice(sliceIn interface{}) (reflect.Type, error) {
+	sliceVal := reflect.ValueOf(sliceIn)
+
+    for sliceVal.Kind() == reflect.Ptr {
+		sliceVal = sliceVal.Elem()
+	}
+
+	if sliceVal.Kind() != reflect.Slice {
+		return nil, fmt.Errorf(
+			"Argumnt to ElementTypeFromSlice must be a Slice or a pointer to "+
+				"a Slice not '%T'.",
+			sliceIn,
+		)
+	}
+
+	sliceType := sliceVal.Type()
+	elemType := sliceType.Elem()
+
+	return elemType, nil
 }
