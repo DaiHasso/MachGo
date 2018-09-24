@@ -484,6 +484,38 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 	return objs, self.manager.Transactionized(action)
 }
 
+func (self QuerySequence) Results() (*MachGo.QueryResults, error) {
+	if self.manager == nil {
+		return nil, errors.New("Manager hasn't been set.")
+	}
+
+	tx, err := self.manager.Beginx()
+	if err != nil {
+		return nil, err
+	}
+
+	query, variables := self.buildQuery()
+
+	query = self.manager.Rebind(query)
+
+	rows, err := tx.Queryx(query, variables...)
+	if err != nil {
+		newErr := tx.Rollback()
+		if newErr != nil {
+			return nil, newErr
+		}
+
+		return nil, err
+	}
+
+	return MachGo.NewQueryResults(
+		tx,
+		rows,
+		self.objects,
+		self.typeBSFieldMap,
+	)
+}
+
 // NOTE: I think reflectx has something like this, should we be using it?
 func (self QuerySequence) getSelectableColumns(obj MachGo.Object) []string {
 	alias := self.tableAliasMap[obj.GetTableName()]
