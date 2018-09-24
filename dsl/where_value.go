@@ -63,6 +63,7 @@ func (self NamespacedColumn) Raw() bool {
 // ConstantValue is a straight value.
 type ConstantValue struct {
 	values []driver.Value
+	isMultiple bool
 }
 
 // Raw is false in this case because the value is a constant.

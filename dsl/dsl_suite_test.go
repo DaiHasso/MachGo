@@ -32,7 +32,7 @@ var _ = BeforeSuite(func() {
 		logLevels,
 	)
 	logger.SetInternalLogger(log.New(GinkgoWriter, "", 0))
-	logging.SetDefaultLogger("tests", &logger)
+	logging.SetDefaultLogger("tests", logger)
 
 	object1 = &testObject{
 		DefaultDBObject: database.DefaultDBObject{},
