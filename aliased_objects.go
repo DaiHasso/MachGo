@@ -13,6 +13,7 @@ type AliasedObjects struct {
     aliasTable map[string]string
     tableAlias map[string]string
     tableType map[string]*reflect.Type
+    typeAlias map[reflect.Type]string
 	objAliasCounter int
 }
 
@@ -39,6 +40,30 @@ func (self AliasedObjects) ObjectAlias(
 		return "", errors.New("Provided Object is not aliased.")
 	}
 	return val, nil
+}
+
+// NewAliasedObjectsFromExisting takes an oldfashion map-style aliased object
+// and creates a new AliasedObjects struct.
+func NewAliasedObjectsFromExisting(
+	aliasedObjectMap map[string]Object,
+) (*AliasedObjects, error) {
+	aliasedObjects := AliasedObjects{
+		aliasTable: make(map[string]string, len(aliasedObjectMap)),
+		tableAlias: make(map[string]string, len(aliasedObjectMap)),
+		tableType: make(map[string]*reflect.Type, len(aliasedObjectMap)),
+		objAliasCounter: len(aliasedObjectMap),
+	}
+	for alias, object := range aliasedObjectMap {
+		tableName := object.GetTableName()
+		aliasedObjects.aliasTable[alias] = tableName
+		aliasedObjects.tableAlias[tableName] = alias
+
+		objType := refl.Deref(reflect.TypeOf(object))
+		aliasedObjects.tableType[tableName] = &objType
+
+	}
+
+	return &aliasedObjects, nil
 }
 
 func NewAliasedObjects(objects ...Object) (*AliasedObjects, error) {

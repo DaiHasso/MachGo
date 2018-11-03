@@ -68,44 +68,6 @@ func NewQueryResult(
     }, nil
 }
 
-func columnsToFieldNames(
-    columnNames []string,
-    typeBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS,
-    aliasedObjects *AliasedObjects,
-) ([]ColumnAliasField, error) {
-    columnAliasFields := make([]ColumnAliasField, len(columnNames))
-    for i, column := range columnNames {
-        columnAlias, ok := ColumnAliasFromString(column)
-        if !ok {
-            return nil, fmt.Errorf("Unexpected column in result: '%s'", column)
-        }
-
-        objType := aliasedObjects.TypeForAlias(columnAlias.TableAlias)
-        tagValBSFields := *typeBSFieldMap[*objType]
-
-        var fieldName string
-        if columnAlias.ColumnName == "id" {
-            // TODO: Fix this hacky usecase. It has something to do
-            //       with the nested struct not populating tags
-            //       maybe?
-            fieldName = strings.ToUpper(columnAlias.ColumnName)
-        } else if bsField, ok := tagValBSFields[columnAlias.ColumnName]; ok {
-            fieldName = bsField.Name()
-        } else {
-            fieldName = SnakeToUpperCamel(columnAlias.ColumnName)
-        }
-
-        columnAliasField := ColumnAliasField{
-            ColumnAlias: *columnAlias,
-            FieldName: fieldName,
-        }
-
-        columnAliasFields[i] = columnAliasField
-    }
-
-    return columnAliasFields, nil
-}
-
 func readRowIntoObjs(
     rows *sqlx.Rows,
     aliasObjVals AliasObjValMap,

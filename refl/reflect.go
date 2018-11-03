@@ -51,8 +51,13 @@ func GetFieldsByTagWithTagValues(
 		}
 
 		if tagValue, ok := field.Tag.Lookup(tag); ok {
+			bsTagValue := newBSTag(tag, tagValue)
+			if bsTagValue.HasProperty("foreign") {
+				// TODO: Handle this more elegantly.
+				continue
+			}
 			value := v.Field(i).Interface()
-			tagValueInterface := TagValueInterface{tagValue, value}
+			tagValueInterface := TagValueInterface{bsTagValue.Value(), value}
 			nameTagValueInterfaces[fieldName] = tagValueInterface
 		}
 	}
@@ -220,18 +225,20 @@ func GetGroupedFieldsWithBS(
 // GroupFieldsByTagValue is a grouping function that will group all the input
 // FieldWithBS by its tag value.
 func GroupFieldsByTagValue(
-	tagName string,
+	tagNames ...string,
 ) GroupFieldWithBSBy {
 	fn := func(
 		fieldsWithBS *GroupedFieldsWithBS,
 		fieldWithBS *FieldWithBS,
 	) {
-		bsTag := fieldWithBS.Tag(tagName)
-		if bsTag == nil {
-			return
+		for _, tagName := range tagNames {
+			bsTag := fieldWithBS.Tag(tagName)
+			if bsTag == nil {
+				return
+			}
+			tagValue := bsTag.Value()
+			(*fieldsWithBS)[tagValue] = fieldWithBS
 		}
-		tagValue := bsTag.Value()
-		(*fieldsWithBS)[tagValue] = fieldWithBS
 	}
 	return fn
 }
@@ -242,6 +249,17 @@ func GroupFieldsByFieldName() GroupFieldWithBSBy {
 	fn := func(fieldsWithBS *GroupedFieldsWithBS, fieldWithBS *FieldWithBS) {
 		fieldName := fieldWithBS.Name()
 		(*fieldsWithBS)[fieldName] = fieldWithBS
+	}
+	return fn
+}
+
+// GroupFieldsByTagName is a grouping function that will group all the input
+// FieldWithBS by its tag name.
+func GroupFieldsByTagName() GroupFieldWithBSBy {
+	fn := func(fieldsWithBS *GroupedFieldsWithBS, fieldWithBS *FieldWithBS) {
+		for _, bsTag := range fieldWithBS.Tags() {
+			(*fieldsWithBS)[bsTag.Name()] = fieldWithBS
+		}
 	}
 	return fn
 }

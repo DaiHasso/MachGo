@@ -43,14 +43,16 @@ func ObjectColumn2(obj MachGo.Object, column string) WhereValuer {
 
 		found := false
 		columnName := ""
+		objType := refl.Deref(reflect.TypeOf(obj))
 		if unicode.IsUpper(rune(column[0])) {
-			if value, ok := qs.fieldNameBSFieldMap[column]; ok {
+			fieldNameBSFields := *qs.typeFieldNameBSFieldMap[objType]
+			if value, ok := fieldNameBSFields[column]; ok {
 				columnName = value.Tag("db").Value()
 				found = true
 			}
 		}
 		if !found {
-			_, ok := qs.typeBSFieldMap[refl.Deref(reflect.TypeOf(obj))]
+			_, ok := qs.typeBSFieldMap[objType]
 			if !ok {
 				panic(fmt.Errorf(
 					"Column name '%s' is neither a name of a property or a " +

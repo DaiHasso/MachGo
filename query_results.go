@@ -3,6 +3,7 @@ package MachGo
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 
@@ -18,6 +19,7 @@ type QueryResults struct {
 	lastError error
 	columns []string
 	columnAliasFields []ColumnAliasField
+	aliasesInSelect map[string]bool
 }
 
 func (self *QueryResults) Next() bool {
@@ -39,7 +41,7 @@ func (self *QueryResults) Next() bool {
 
 		self.columns = columnNames
 
-		self.columnAliasFields, err = columnsToFieldNames(
+		self.columnAliasFields, self.aliasesInSelect, err = columnsToFieldNames(
 			self.columns,
 			self.typeBSFieldMap,
 			self.aliasedObjects,
@@ -72,8 +74,16 @@ func (self *QueryResults) Err() error {
 }
 
 func (self *QueryResults) WriteAllTo(objectSlices ...interface{}) error {
+	defer self.tx.Commit()
+
 	elemTypes := make([]reflect.Type, len(objectSlices))
 	for i, objectSlice := range objectSlices {
+		if typ := reflect.TypeOf(objectSlice); typ.Kind() != reflect.Ptr {
+			return fmt.Errorf(
+				"Type must be pointer to slice not %T.",
+				objectSlice,
+			)
+		}
 		objElemType, err := refl.ElementTypeFromSlice(objectSlice)
 		if err != nil {
 			return err
@@ -88,6 +98,7 @@ func (self *QueryResults) WriteAllTo(objectSlices ...interface{}) error {
 			return fmt.Errorf("No results match type '%s'.", objElemTypeDeref)
 		}
 
+
 		elemTypes[i] = objElemType
 	}
 
@@ -96,6 +107,19 @@ func (self *QueryResults) WriteAllTo(objectSlices ...interface{}) error {
 		for i, elemTypePtr := range elemTypes {
 			elemType := elemTypePtr.Elem()
 			elemVal := reflect.New(elemType).Interface()
+			elemAlias, err := self.aliasedObjects.ObjectAlias(
+				elemVal.(Object),
+			)
+			if err != nil {
+				return err
+			}
+			if _, ok := self.aliasesInSelect[elemAlias]; !ok {
+				return fmt.Errorf(
+					"Can't write slice of type '%s', object is not in select.",
+					elemType,
+				)
+			}
+
 			elemValues[i] = elemVal
 		}
 		nextResult := self.GetResult()
@@ -116,16 +140,60 @@ func (self *QueryResults) WriteAllTo(objectSlices ...interface{}) error {
 		}
 	}
 
-	return self.tx.Commit()
+	return nil
 }
+
+func columnsToFieldNames(
+    columnNames []string,
+    typeBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS,
+    aliasedObjects *AliasedObjects,
+) ([]ColumnAliasField, map[string]bool, error) {
+    columnAliasFields := make([]ColumnAliasField, len(columnNames))
+    aliasesInSelect := make(map[string]bool, len(columnNames))
+    for i, column := range columnNames {
+        columnAlias, ok := ColumnAliasFromString(column)
+        if !ok {
+            return nil, nil, fmt.Errorf(
+				"Unexpected column in result: '%s'",
+				column,
+			)
+        }
+
+		aliasesInSelect[columnAlias.TableAlias] = true
+
+        objType := aliasedObjects.TypeForAlias(columnAlias.TableAlias)
+        tagValBSFields := *typeBSFieldMap[*objType]
+
+        var fieldName string
+        if columnAlias.ColumnName == "id" {
+            // TODO: Fix this hacky usecase. It has something to do
+            //       with the nested struct not populating tags
+            //       maybe?
+            fieldName = strings.ToUpper(columnAlias.ColumnName)
+        } else if bsField, ok := tagValBSFields[columnAlias.ColumnName]; ok {
+            fieldName = bsField.Name()
+        } else {
+            fieldName = SnakeToUpperCamel(columnAlias.ColumnName)
+        }
+
+        columnAliasField := ColumnAliasField{
+            ColumnAlias: *columnAlias,
+            FieldName: fieldName,
+        }
+
+        columnAliasFields[i] = columnAliasField
+    }
+
+    return columnAliasFields, aliasesInSelect, nil
+}
+
 
 func NewQueryResults(
 	tx *sqlx.Tx,
 	rows *sqlx.Rows,
-	objects []Object, // TODO: We should be receiving AliasedObjects instead.
+	aliasedObjects *AliasedObjects,
 	typeBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS,
-) (*QueryResults, error) {
-	aliasedObjects, err := NewAliasedObjects(objects...)
+) *QueryResults {
 	return &QueryResults{
 		tx: tx,
 		rows: rows,
@@ -134,5 +202,5 @@ func NewQueryResults(
 		typeBSFieldMap: typeBSFieldMap,
 		columns: nil,
 		columnAliasFields: nil,
-	}, err
+	}
 }

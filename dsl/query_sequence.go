@@ -24,6 +24,8 @@ var columnAliasNamespaceRegex = regexp.MustCompile(`^([^_]+)_(.*)$`)
 
 // QuerySequence is an object that builds a query.
 // TODO: All these maps should probably be something more clever.
+// TODO: Refactor QuerySequence to use the new AliasedObjects struct to solve
+//       above todo.
 type QuerySequence struct {
 	objects,
 	joinedObjects []MachGo.Object
@@ -33,8 +35,8 @@ type QuerySequence struct {
 	aliasObjectMap map[string]MachGo.Object
 	columnAliasMap,
 	aliasTableMap map[string]string
-	typeBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS
-	fieldNameBSFieldMap refl.GroupedFieldsWithBS
+	typeBSFieldMap,
+	typeFieldNameBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS
 	objectAliasCounter      int
 	selectColumnExpressions []SelectColumnExpression
 	selectObjectTables map[string]int
@@ -105,6 +107,8 @@ type joinExpression struct {
 	relationship *MachGo.Relationship
 }
 
+// ObjectColumn takes the target object and either a property name
+// (ex: "FooBar") or a tag value (ex: "foo_bar") for a column.
 func ObjectColumn(obj MachGo.Object, column string) NamespacedColumn {
 	columnString := column
 	if unicode.IsUpper(rune(column[0])) {
@@ -136,7 +140,7 @@ func newQuerySequence() *QuerySequence {
 		columnAliasMap: make(map[string]string, 0),
 		aliasTableMap: make(map[string]string, 0),
 		typeBSFieldMap: make(map[reflect.Type]*refl.GroupedFieldsWithBS, 0),
-		fieldNameBSFieldMap: nil,
+		typeFieldNameBSFieldMap: make(map[reflect.Type]*refl.GroupedFieldsWithBS, 0),
 		objectAliasCounter: 0,
 		selectColumnExpressions: make([]SelectColumnExpression, 0),
 		selectObjectTables: make(map[string]int, 0),
@@ -185,14 +189,14 @@ func (self *QuerySequence) cacheTagsForType(objects ...MachGo.Object) {
 		objType := refl.Deref(reflect.TypeOf(object))
 		fieldGroupings := refl.GetGroupedFieldsWithBS(
 			object,
-			refl.GroupFieldsByTagValue("db"),
+			refl.GroupFieldsByTagValue("db", "dbfkey"),
 			refl.GroupFieldsByFieldName(),
 		)
 		tagValBSFields := fieldGroupings[0]
 		fieldNameBSFields := fieldGroupings[1]
 
 		self.typeBSFieldMap[objType] = tagValBSFields
-		self.fieldNameBSFieldMap = *fieldNameBSFields
+		self.typeFieldNameBSFieldMap[objType] = fieldNameBSFields
 	}
 }
 
@@ -463,6 +467,7 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 						values = append(values, int)
 					}
 				} else {
+					// Throw it into the ether.
 					int := new(interface{})
 					values = append(values, int)
 				}
@@ -508,35 +513,85 @@ func (self QuerySequence) Results() (*MachGo.QueryResults, error) {
 		return nil, err
 	}
 
+	aliasedObjects, err := MachGo.NewAliasedObjectsFromExisting(self.aliasObjectMap)
+	if err != nil {
+		return nil, err
+	}
+
 	return MachGo.NewQueryResults(
 		tx,
 		rows,
-		self.objects,
+		aliasedObjects,
 		self.typeBSFieldMap,
-	)
+	), nil
 }
 
 // NOTE: I think reflectx has something like this, should we be using it?
 func (self QuerySequence) getSelectableColumns(obj MachGo.Object) []string {
-	alias := self.tableAliasMap[obj.GetTableName()]
-	columns := refl.GetTagValues(obj, "db", func(s string) string {
-		return fmt.Sprintf(
-			"%s.%s as %s_%s",
-			alias,
-			s,
-			alias,
-			s,
-		)
-	})
-	// TODO: This is hacky, figure out something more elegant.
+	objType := refl.Deref(reflect.TypeOf(obj))
+	bsFieldMap := self.typeFieldNameBSFieldMap[objType]
 
+	objAlias := self.tableAliasMap[obj.GetTableName()]
+	var columns []string
+	for _, bsField := range *bsFieldMap {
+		var foreignAlias string
+		var column string
+		if bsTag := bsField.Tag("db"); bsTag != nil {
+			column = bsTag.Value()
+			foreignAlias = objAlias
+			if bsTag.HasProperty("foreign") {
+				foreignBSTag := bsField.Tag("dbforeign")
+				if foreignBSTag == nil {
+					panic(fmt.Errorf(
+						"Foreign column declared without 'dbforeign' tag " +
+							"declared for field '%s'",
+						bsField.Name(),
+					))
+				}
+
+				foreignTable := foreignBSTag.Value()
+				var ok bool
+				foreignAlias, ok = self.tableAliasMap[foreignTable]
+				if !ok {
+					panic(fmt.Errorf(
+						"Table '%s' declared in foreign relationship is not " +
+						"in QuerySequence.",
+						foreignTable,
+					))
+				}
+			}
+			aliasedColumn := fmt.Sprintf(
+				"%s.%s as %s_%s",
+				foreignAlias,
+				column,
+				objAlias,
+				column,
+			)
+			columns = append(columns, aliasedColumn)
+		}
+	}
+
+	// TODO: This is hacky, figure out something more elegant.
+	// NOTE: Maybe they could be optional function calls on an Object? Some
+	//       kind of "default_attr" interface?
 	if _, ok := obj.(MachGo.IDAttribute); ok {
-		columns = append(columns, fmt.Sprintf("%s.id as %s_id", alias, alias))
+		newColumn := fmt.Sprintf("%s.id as %s_id", objAlias, objAlias)
+		columns = append(columns, newColumn)
 	}
 
 	if _, ok := obj.(MachGo.DefaultAttributes); ok {
-		columns = append(columns, fmt.Sprintf("%s.created as %s_created", alias, alias))
-		columns = append(columns, fmt.Sprintf("%s.updated %s_updated", alias, alias))
+		createdColumn := fmt.Sprintf(
+			"%s.created as %s_created",
+			objAlias,
+			objAlias,
+		)
+		updatedColumn := fmt.Sprintf(
+			"%s.updated %s_updated",
+			objAlias,
+			objAlias,
+		)
+		columns = append(columns, createdColumn)
+		columns = append(columns, updatedColumn)
 	}
 
 	return columns
@@ -586,28 +641,39 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 		selectString += line
 	}
 
-	joinExps := self.solveJoin()
-	for _, exp := range joinExps {
-		fromAlias := self.tableAliasMap[exp.fromObject.GetTableName()]
-		toAlias := self.tableAliasMap[exp.toObject.GetTableName()]
-		line := ""
-		if len(fromString) == 0 {
-			line += fmt.Sprintf(
-				"%s %s",
-				exp.fromObject.GetTableName(),
-				fromAlias,
-			)
-		}
-		line += fmt.Sprintf(
-			" JOIN %s %s ON %s.%s=%s.%s",
-			exp.toObject.GetTableName(),
-			toAlias,
-			fromAlias,
-			exp.relationship.SelfColumn,
-			toAlias,
-			exp.relationship.TargetColumn,
+	if len(self.joinedObjects) == 1 {
+		// It's just a normal select with no join.
+		onlyObject := self.joinedObjects[0]
+		objectAlias := self.tableAliasMap[onlyObject.GetTableName()]
+		fromString = fmt.Sprintf(
+			"%s %s",
+			onlyObject.GetTableName(),
+			objectAlias,
 		)
-		fromString += line
+	} else {
+		joinExps := self.solveJoin()
+		for _, exp := range joinExps {
+			fromAlias := self.tableAliasMap[exp.fromObject.GetTableName()]
+			toAlias := self.tableAliasMap[exp.toObject.GetTableName()]
+			line := ""
+			if len(fromString) == 0 {
+				line += fmt.Sprintf(
+					"%s %s",
+					exp.fromObject.GetTableName(),
+					fromAlias,
+				)
+			}
+			line += fmt.Sprintf(
+				" JOIN %s %s ON %s.%s=%s.%s",
+				exp.toObject.GetTableName(),
+				toAlias,
+				fromAlias,
+				exp.relationship.SelfColumn,
+				toAlias,
+				exp.relationship.TargetColumn,
+			)
+			fromString += line
+		}
 	}
 
 	query := fmt.Sprintf(

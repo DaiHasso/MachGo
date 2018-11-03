@@ -62,7 +62,7 @@ func (self NamespacedColumn) Raw() bool {
 
 // ConstantValue is a straight value.
 type ConstantValue struct {
-	values []driver.Value
+	values     []driver.Value
 	isMultiple bool
 }
 
@@ -85,7 +85,7 @@ func (self ConstantValue) QueryValue(qs *QuerySequence) (string, []interface{}) 
 
 	var bindvars string
 	for i, value := range self.values {
-		if len(bindvars) > 1 {
+		if len(bindvars) >= 1 {
 			bindvars += ", "
 		}
 		bindvars += "?"
