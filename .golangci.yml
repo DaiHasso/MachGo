@@ -1,0 +1,15 @@
+linters-settings:
+    lll:
+        # max line length, lines longer will be reported. Default is 120.
+        # '\t' is counted as 1 character by default, and can be changed with the tab-width option
+        line-length: 79
+        # tab width in spaces. Default to 1.
+        tab-width: 4
+linters:
+    enable:
+        - lll
+        - gosec
+issues:
+    exclude:
+        - "receiver name should be a reflection of its identity; don't use generic names such as \"this\" or \"self\"",
+        - "error strings should not be capitalized or end with punctuation or a newline"

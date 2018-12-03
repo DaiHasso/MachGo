@@ -11,20 +11,18 @@ before_install:
   - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
   # Lint stuff
-  - go get -u github.com/alecthomas/gometalinter
-  - go get -u github.com/kisielk/errcheck
-  - go get github.com/securego/gosec/cmd/gosec/...
+  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $GOPATH/bin v1.12.3
   # Dep
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh  
 
 install:
-  - dep ensure
+  - dep ensure -v --vendor-only
   # Add Godeps dependencies to GOPATH and PATH
   - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
   - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
 
 before_script:
-  - gometalinter --vendor --disable-all --enable=errcheck --enable=vet --enable=vetshadow --enable=gosec ./...
+  - golangci-lint run -v --issues-exit-code=0 --disable-all -E=govet -E=errcheck -E=staticcheck -E=unused -E=gosimple -E=structcheck -E=varcheck -E=ineffassign -E=deadcode -E=typecheck -E=lll -E=gosec ./...
 
 script:
   - ginkgo -r --failOnPending --cover --trace ./...
