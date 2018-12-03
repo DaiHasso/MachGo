@@ -10,7 +10,7 @@ import (
 )
 
 var mysqlAddressTemplate = "%s:%s@tcp(%s:%s)/%s" +
-	"?parseTime=true&loc=US%%2FPacific"
+	"?parseTime=true&loc=UTC"
 
 func getMysqlDatabase(
 	username,
