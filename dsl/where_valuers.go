@@ -10,8 +10,8 @@ import (
 	"github.com/DaiHasso/MachGo/refl"
 )
 
-// WhereValuer is a function that takes a QuerySequence and returns a WhereValue
-// resolved using that QuerySequence.
+// WhereValuer is a function that takes a QuerySequence and returns a
+// WhereValue resolved using that QuerySequence.
 type WhereValuer (func(*QuerySequence) WhereValue)
 
 func Const(values ...driver.Value) WhereValuer {
@@ -117,7 +117,9 @@ func (self *WhereValuerCondition) String() string {
 
 // ToQuery takes a QuerySequence and converts itself to a database-ready query
 // string and values for bindvars.
-func (self *WhereValuerCondition) ToQuery(qs *QuerySequence) (string, []interface{}) {
+func (self *WhereValuerCondition) ToQuery(
+	qs *QuerySequence,
+) (string, []interface{}) {
     var result string
     var values []interface{}
 

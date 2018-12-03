@@ -80,7 +80,9 @@ func (self ConstantValue) Value() (driver.Value, error) {
 }
 
 // QueryValue returns a bindvar and the interface value.
-func (self ConstantValue) QueryValue(qs *QuerySequence) (string, []interface{}) {
+func (self ConstantValue) QueryValue(
+	qs *QuerySequence,
+) (string, []interface{}) {
 	values := make([]interface{}, len(self.values))
 
 	var bindvars string

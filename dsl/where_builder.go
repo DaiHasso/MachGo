@@ -89,7 +89,9 @@ func (self *WhereCondition) String() string {
 
 // ToQuery takes a QuerySequence and converts itself to a database-ready query
 // string and values for bindvars.
-func (self *WhereCondition) ToQuery(qs *QuerySequence) (string, []interface{}) {
+func (self *WhereCondition) ToQuery(
+	qs *QuerySequence,
+) (string, []interface{}) {
     var result string
     var values []interface{}
 
@@ -150,7 +152,9 @@ func (self *WhereConditionSet) String() string {
 
 // ToQuery takes a QuerySequence and converts itself to a database-ready query
 // string and values for bindvars.
-func (self *WhereConditionSet) ToQuery(qs *QuerySequence) (string, []interface{}) {
+func (self *WhereConditionSet) ToQuery(
+	qs *QuerySequence,
+) (string, []interface{}) {
     result := "("
     var values []interface{}
     for _, conditionOrSet := range self.Conditions {
@@ -242,8 +246,8 @@ func (self *WhereBuilder) Eq(values ...WhereValue) *WhereBuilder {
     if len(values) == 1 {
         self.setCurrentConditionValue(values[0])
     }
-    // TODO: Handle multiple values, maybe duplicate and AND conditions with all
-    //       the values?
+    // TODO: Handle multiple values, maybe duplicate and AND conditions with
+	//       all the values?
 
     return self
 }
@@ -384,7 +388,9 @@ func conditionValueString(
 	return fmt.Sprint(val)
 }
 
-func (self *WhereBuilder) checkAndSetComparison(comparison ComparisonOperator) {
+func (self *WhereBuilder) checkAndSetComparison(
+	comparison ComparisonOperator,
+) {
 	if self.CurrentCondition == nil {
 		panic(fmt.Sprintf(
 			"Can't use %s without specifying a lefthand variable.",
@@ -410,8 +416,8 @@ func (self *WhereBuilder) checkAndSetCombiner(combiner ConditionCombiner) {
 
 		if lastCondition.GetCombiner() != UnsetCombiner {
 			logging.Warn(
-				"Tried to set condition combination when a combination already "+
-					"was set.",
+				"Tried to set condition combination when a combination " +
+					"already was set.",
 			).With(
 				"existing_combiner",
 				lastCondition.GetCombiner(),

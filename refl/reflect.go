@@ -86,7 +86,9 @@ func GetFieldsByTag(in interface{}, tag string) map[string]interface{} {
 }
 
 // GetTagValues will get all the fields tag values as a slice.
-func GetTagValues(in interface{}, tag string, formatters... (func(string) string)) []string {
+func GetTagValues(
+	in interface{}, tag string, formatters... (func(string) string),
+) []string {
 	t := reflect.TypeOf(in)
 	v := reflect.ValueOf(in)
 	for t.Kind() == reflect.Ptr {
@@ -267,7 +269,7 @@ func GroupFieldsByTagName() GroupFieldWithBSBy {
 func getAllTags(
 	tag reflect.StructTag,
 ) (map[string]*BSTag, error) {
-	tagBSTags := make(map[string]*BSTag, 0)
+	tagBSTags := make(map[string]*BSTag)
 	// Heavily influenced by https://tinyurl.com/ycoqx5hn
 
 	curTagPart := tag
@@ -284,10 +286,11 @@ func getAllTags(
 		}
 
 
-		// Scan to colon. A space, a quote or a control character is a syntax error.
-		// Strictly speaking, control chars include the range [0x7f, 0x9f], not just
-		// [0x00, 0x1f], but in practice, we ignore the multi-byte control characters
-		// as it is simpler to inspect the tag's bytes than the tag's runes.
+		// Scan to colon. A space, a quote or a control character is a syntax
+		// error. Strictly speaking, control chars include the range
+		// [0x7f, 0x9f], not just [0x00, 0x1f], but in practice, we ignore the
+		// multi-byte control characters as it is simpler to inspect the tag's
+		// bytes than the tag's runes.
 		i = 0
 		for i < len(curTagPart) {
 			curRune := curTagPart[i]

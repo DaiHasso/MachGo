@@ -19,10 +19,10 @@ var _ = Describe("WhereBuilder", func() {
 		Expect(whereString).To(Equal("testtable1.foo = 1"))
 	})
 	It("Should generate a parenthesized condition with a subwhere", func() {
-		whereString := dsl.NewWhere().ObjectColumn(object1, "foo").Eq().Const(1).And().
-			ObjectColumn(object1, "bar").LessEq().ObjectColumn(object1, "baz").Or().
-			ObjectColumn(object2, "id").Greater().ObjectColumn(object1, "modified").
-			String()
+		whereString := dsl.NewWhere().ObjectColumn(object1, "foo").Eq().
+			Const(1).And().ObjectColumn(object1, "bar").LessEq().
+			ObjectColumn(object1, "baz").Or().ObjectColumn(object2, "id").
+			Greater().ObjectColumn(object1, "modified").String()
 
 		fmt.Fprintf(GinkgoWriter, whereString)
 
@@ -32,9 +32,10 @@ var _ = Describe("WhereBuilder", func() {
 		))
 	})
 	It("Should handle complex where queries", func() {
-		whereString := dsl.NewWhere().ObjectColumn(object1, "foo").Eq().Const(1).And().
-			ObjectColumn(object1, "bar").LessEq().ObjectColumn(object1, "baz").Or().
-			ObjectColumn(object2, "id").Greater().ObjectColumn(object1, "modified").
+		whereString := dsl.NewWhere().ObjectColumn(object1, "foo").Eq().
+			Const(1).And().ObjectColumn(object1, "bar").LessEq().
+			ObjectColumn(object1, "baz").Or().ObjectColumn(object2, "id").
+			Greater().ObjectColumn(object1, "modified").
 			String()
 
 		fmt.Fprintf(GinkgoWriter, whereString)
@@ -45,8 +46,8 @@ var _ = Describe("WhereBuilder", func() {
 		))
 	})
 	It("Should handle doubly nested where conditions", func() {
-		whereString := dsl.NewWhere().ObjectColumn(object1, "foo").Eq().Const(1).And().
-			SubCond(
+		whereString := dsl.NewWhere().ObjectColumn(object1, "foo").Eq().
+			Const(1).And().SubCond(
 				dsl.NewWhere().ObjectColumn(object1, "bar").LessEq().
 					ObjectColumn(object1, "baz").Or().
 					SubCond(

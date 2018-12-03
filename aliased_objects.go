@@ -7,13 +7,13 @@ import (
 	"github.com/DaiHasso/MachGo/refl"
 )
 
-const tableAliasAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const tableAliasAlphabet = "abcdefghijklmnopqrstuvwxyz"+
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type AliasedObjects struct {
     aliasTable map[string]string
     tableAlias map[string]string
     tableType map[string]*reflect.Type
-    typeAlias map[reflect.Type]string
 	objAliasCounter int
 }
 

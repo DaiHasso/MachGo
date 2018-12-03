@@ -9,7 +9,3 @@ linters:
     enable:
         - lll
         - gosec
-issues:
-    exclude:
-        - "receiver name should be a reflection of its identity; don't use generic names such as \"this\" or \"self\"",
-        - "error strings should not be capitalized or end with punctuation or a newline"

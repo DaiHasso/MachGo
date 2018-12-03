@@ -41,7 +41,7 @@ func (self *QueryResults) Next() bool {
 
 		self.columns = columnNames
 
-		self.columnAliasFields, self.aliasesInSelect, err = columnsToFieldNames(
+		columnAliasFields, aliasesInSelect, err := columnsToFieldNames(
 			self.columns,
 			self.typeBSFieldMap,
 			self.aliasedObjects,
@@ -50,6 +50,9 @@ func (self *QueryResults) Next() bool {
 			self.lastError = err
 			return false
 		}
+
+		self.columnAliasFields = columnAliasFields
+		self.aliasesInSelect = aliasesInSelect
 	}
 
 	self.nextResult, err = NewQueryResult(
@@ -73,8 +76,12 @@ func (self *QueryResults) Err() error {
 	return self.lastError
 }
 
-func (self *QueryResults) WriteAllTo(objectSlices ...interface{}) error {
-	defer self.tx.Commit()
+func (self *QueryResults) WriteAllTo(
+	objectSlices ...interface{},
+) (retErr error) {
+	defer func() {
+		retErr = self.tx.Commit()
+	}()
 
 	elemTypes := make([]reflect.Type, len(objectSlices))
 	for i, objectSlice := range objectSlices {

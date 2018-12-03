@@ -222,9 +222,7 @@ func (m *Manager) SaveObject(obj Object) error {
 	}
 
 	action := func(obj Object, tx *sqlx.Tx) error {
-		var err error
-
-		err = obj.PreInsertActions()
+		err := obj.PreInsertActions()
 		if err != nil {
 			return err
 		}
@@ -354,19 +352,22 @@ func (m *Manager) UpdateObject(obj Object) error {
 
 		for name, tagValueInterface := range nameTagValueInterfaces {
 			if isDiffable {
-				if diffable.GetLastSavedValue(name) == tagValueInterface.Interface {
+				lastSavedValue := diffable.GetLastSavedValue(name)
+				if lastSavedValue == tagValueInterface.Interface {
 					continue
 				} else {
-					diffable.SetLastSavedValue(name, tagValueInterface.Interface)
+					diffable.SetLastSavedValue(
+						name, tagValueInterface.Interface,
+					)
 				}
 			}
 
 			if compositeObj != nil {
 				var (
 					newWhereValues []interface{}
-					newWhereClause string
+					newWhere string
 				)
-				newWhereValues, newWhereClause, err = buildCompositeWhereClause(
+				newWhereValues, newWhere, err = buildCompositeWhereClause(
 					compositeObj,
 					tagValueInterface,
 					whereClause,
@@ -375,12 +376,14 @@ func (m *Manager) UpdateObject(obj Object) error {
 				if err != nil {
 					return err
 				}
-				whereClause = newWhereClause
+				whereClause = newWhere
 				whereValues = append(whereValues, newWhereValues...)
 			}
 
 			if len(variableSetStatements) != 0 {
-				variableSetStatements = append(variableSetStatements, []byte{',', ' '}...)
+				variableSetStatements = append(
+					variableSetStatements, []byte{',', ' '}...,
+				)
 			}
 
 			variableSetSQL := []byte(
@@ -399,7 +402,9 @@ func (m *Manager) UpdateObject(obj Object) error {
 		}
 
 		if len(variableValues) == 0 {
-			logging.Debug("Skipping update because no data has changed.").Send()
+			logging.Debug(
+				"Skipping update because no data has changed.",
+			).Send()
 			return nil
 		}
 
@@ -450,7 +455,7 @@ func (m *Manager) DeleteObject(obj Object) error {
 			whereValues = append(whereValues, newWhereValues...)
 		} else if result, ok := obj.(CompositeObject); ok {
 			for _, tagValueInterface := range nameTagValueInterfaces {
-				newWhereValues, newWhereClause, err := buildCompositeWhereClause(
+				newWhereValues, newWhere, err := buildCompositeWhereClause(
 					result,
 					tagValueInterface,
 					whereClause,
@@ -459,7 +464,7 @@ func (m *Manager) DeleteObject(obj Object) error {
 				if err != nil {
 					return err
 				}
-				whereClause = newWhereClause
+				whereClause = newWhere
 				whereValues = append(whereValues, newWhereValues...)
 			}
 		} else {

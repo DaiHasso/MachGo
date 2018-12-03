@@ -51,22 +51,6 @@ type SelectColumnExpression struct {
 	tableNamespace string
 }
 
-func namespacedColumnFromString(raw string) NamespacedColumn {
-	column := new(NamespacedColumn)
-	column.isNamespaced = false
-	column.columnName = raw
-	if columnNamespaceRegex.MatchString(raw) {
-		results := columnNamespaceRegex.FindStringSubmatch(
-			raw,
-		)
-		column.isNamespaced = true
-		column.tableNamespace = results[1]
-		column.columnName = results[2]
-	}
-
-	return *column
-}
-
 func namespacedColumnAliasString(raw string) NamespacedColumn {
 	column := new(NamespacedColumn)
 	column.isNamespaced = false
@@ -133,17 +117,19 @@ func newQuerySequence() *QuerySequence {
 	return &QuerySequence{
 		objects: make([]MachGo.Object, 0),
 		joinedObjects: make([]MachGo.Object, 0),
-		typeAliasMap: make(map[reflect.Type]string, 0),
-		aliasTypeMap: make(map[string]reflect.Type, 0),
-		tableAliasMap: make(map[string]string, 0),
-		aliasObjectMap: make(map[string]MachGo.Object, 0),
-		columnAliasMap: make(map[string]string, 0),
-		aliasTableMap: make(map[string]string, 0),
-		typeBSFieldMap: make(map[reflect.Type]*refl.GroupedFieldsWithBS, 0),
-		typeFieldNameBSFieldMap: make(map[reflect.Type]*refl.GroupedFieldsWithBS, 0),
+		typeAliasMap: make(map[reflect.Type]string),
+		aliasTypeMap: make(map[string]reflect.Type),
+		tableAliasMap: make(map[string]string),
+		aliasObjectMap: make(map[string]MachGo.Object),
+		columnAliasMap: make(map[string]string),
+		aliasTableMap: make(map[string]string),
+		typeBSFieldMap: make(map[reflect.Type]*refl.GroupedFieldsWithBS),
+		typeFieldNameBSFieldMap: make(
+			map[reflect.Type]*refl.GroupedFieldsWithBS,
+		),
 		objectAliasCounter: 0,
 		selectColumnExpressions: make([]SelectColumnExpression, 0),
-		selectObjectTables: make(map[string]int, 0),
+		selectObjectTables: make(map[string]int),
 		whereBuilder: nil,
 		manager: nil,
 	}
@@ -252,7 +238,9 @@ func (self *QuerySequence) Select(columns ...string) *QuerySequence {
 }
 
 // SelectObject selects data pertaining to the given object.
-func (self *QuerySequence) SelectObject(objects ...MachGo.Object) *QuerySequence {
+func (self *QuerySequence) SelectObject(
+	objects ...MachGo.Object,
+) *QuerySequence {
 	columnExpressions := make([]SelectColumnExpression, 0)
 
 	for i, object := range objects {
@@ -295,7 +283,9 @@ func (self QuerySequence) PrintQuery() string {
 	return queryString
 }
 
-func (self *QuerySequence) SetManager(manager *database.Manager) *QuerySequence {
+func (self *QuerySequence) SetManager(
+	manager *database.Manager,
+) *QuerySequence {
 	self.manager = manager
 
 	return self
@@ -380,8 +370,8 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 			return err
 		}
 
-		resultTypes := make(map[string]reflect.Type, 0)
-		aliasIndexes := make(map[string]int, 0)
+		resultTypes := make(map[string]reflect.Type)
+		aliasIndexes := make(map[string]int)
 		for _, column := range columnNames {
 			columnNS := namespacedColumnAliasString(column)
 			if columnNS.isNamespaced {
@@ -438,12 +428,13 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					tagValBSFields := *self.typeBSFieldMap[objType]
 
 					var fieldName string
+					bsField, fieldExists := tagValBSFields[columnNS.columnName]
 					if columnNS.columnName == "id" {
 						// TODO: Fix this hacky usecase. It has something to do
 						//       with the nested struct not populating tags
 						//       maybe?
 						fieldName = strings.ToUpper(columnNS.columnName)
-					} else if bsField, ok := tagValBSFields[columnNS.columnName]; ok {
+					} else if fieldExists{
 						fieldName = bsField.Name()
 					} else {
 						fieldName = namespacedColumnToField(columnNS)
@@ -513,7 +504,9 @@ func (self QuerySequence) Results() (*MachGo.QueryResults, error) {
 		return nil, err
 	}
 
-	aliasedObjects, err := MachGo.NewAliasedObjectsFromExisting(self.aliasObjectMap)
+	aliasedObjects, err := MachGo.NewAliasedObjectsFromExisting(
+		self.aliasObjectMap,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -628,7 +621,8 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 				line += strings.Join(self.getSelectableColumns(obj), ", ")
 			} else {
 				if selectExp.isNamespaced {
-					if alias, ok := self.tableAliasMap[selectExp.tableNamespace]; ok {
+					alias, ok := self.tableAliasMap[selectExp.tableNamespace]
+					if ok {
 						line += fmt.Sprintf("%s.", alias)
 					} else {
 						line += fmt.Sprintf("%s.", selectExp.tableNamespace)
@@ -676,6 +670,7 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 		}
 	}
 
+	// #nosec G201
 	query := fmt.Sprintf(
 		"SELECT %s FROM %s",
 		selectString,
@@ -695,7 +690,7 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 
 func (self *QuerySequence) solveJoin() []joinExpression {
 	results := make([]joinExpression, 0)
-	matches := make(map[string][]MachGo.Object, 0)
+	matches := make(map[string][]MachGo.Object)
 	for _, toObject := range self.joinedObjects {
 		if _, ok := matches[toObject.GetTableName()]; !ok {
 			matches[toObject.GetTableName()] = make([]MachGo.Object, 0)
@@ -755,7 +750,7 @@ func findRelationshipBetweenObjects(object1, object2 MachGo.Object) (
 	error,
 ) {
 	isRelationshipable := false
-	matches := make(map[MachGo.Object][]*joinExpression, 0)
+	matches := make(map[MachGo.Object][]*joinExpression)
 
 	if relationshipable, ok := object1.(MachGo.Relationshipable); ok {
 		isRelationshipable = true

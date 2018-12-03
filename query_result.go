@@ -35,7 +35,7 @@ func (self QueryResult) WriteTo(objects ...interface{}) error {
         objVal := objValPtr.Elem()
         if objVal.Kind() == reflect.Ptr {
             objTypeStr := fmt.Sprintf("%T", object)
-            baseType := strings.Replace(objTypeStr, "*", "", 0)
+            baseType := strings.Replace(objTypeStr, "*", "", -1)
             return fmt.Errorf(
                 "Object provided should be *%s not %s.",
                 baseType,

@@ -101,7 +101,7 @@ var _ = Describe("QuerySequence", func() {
             db.Close()
         })
 
-        It("Should be able to return all data as interfaces for joined objects",
+        It("Should be able to return data as interfaces for joined objects",
             func() {
                 qs := dsl.NewJoin(
                     object1,
