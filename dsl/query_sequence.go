@@ -9,9 +9,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/DaiHasso/MachGo"
-	"github.com/DaiHasso/MachGo/database"
-	"github.com/DaiHasso/MachGo/refl"
+	"MachGo"
+	"MachGo/database"
+	"MachGo/refl"
 
 	logging "github.com/daihasso/slogging"
 	"github.com/jmoiron/sqlx"

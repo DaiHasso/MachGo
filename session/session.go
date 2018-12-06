@@ -1,9 +1,9 @@
 package session
 
 import (
-	"github.com/DaiHasso/MachGo"
-	"github.com/DaiHasso/MachGo/dsl"
-	"github.com/DaiHasso/MachGo/database"
+	"MachGo"
+	"MachGo/dsl"
+	"MachGo/database"
 )
 
 type Session struct {

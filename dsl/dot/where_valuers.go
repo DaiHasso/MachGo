@@ -4,8 +4,8 @@ package dot
 import (
 	"database/sql/driver"
 
-	"github.com/DaiHasso/MachGo"
-	"github.com/DaiHasso/MachGo/dsl"
+	"MachGo"
+	"MachGo/dsl"
 )
 
 // Const will create a constant value for a where clause based on the value(s)

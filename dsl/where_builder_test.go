@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/DaiHasso/MachGo/dsl"
+	"MachGo/dsl"
 )
 
 var _ = Describe("WhereBuilder", func() {

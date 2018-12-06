@@ -6,7 +6,7 @@ import (
     "reflect"
     "unicode"
 
-    database "github.com/DaiHasso/MachGo"
+    database "MachGo"
 
     logging "github.com/daihasso/slogging"
 )

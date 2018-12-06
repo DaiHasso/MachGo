@@ -6,8 +6,8 @@ import (
 	"unicode"
 	"database/sql/driver"
 
-	"github.com/DaiHasso/MachGo"
-	"github.com/DaiHasso/MachGo/refl"
+	"MachGo"
+	"MachGo/refl"
 )
 
 // WhereValuer is a function that takes a QuerySequence and returns a

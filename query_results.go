@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/DaiHasso/MachGo/refl"
+	"MachGo/refl"
 )
 
 type QueryResults struct {

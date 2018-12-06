@@ -10,8 +10,8 @@ import (
     . "github.com/onsi/gomega"
 
     sqlmock "github.com/DATA-DOG/go-sqlmock"
-    "github.com/DaiHasso/MachGo/database"
-    "github.com/DaiHasso/MachGo/dsl"
+    "MachGo/database"
+    "MachGo/dsl"
 )
 
 var _ = Describe("QuerySequence", func() {

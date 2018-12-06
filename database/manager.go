@@ -11,8 +11,8 @@ import (
 	logging "github.com/daihasso/slogging"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/DaiHasso/MachGo/refl"
-	. "github.com/DaiHasso/MachGo"
+	"MachGo/refl"
+	. "MachGo"
 )
 
 func initDiffable(obj Object) {

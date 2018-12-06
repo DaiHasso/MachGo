@@ -1,7 +1,7 @@
 package dot
 
 import (
-	"github.com/DaiHasso/MachGo/dsl"
+	"MachGo/dsl"
 )
 
 // Where returns a new WhereBuilder.

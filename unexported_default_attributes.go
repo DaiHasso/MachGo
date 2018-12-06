@@ -3,7 +3,7 @@ package MachGo
 import (
 	"time"
 
-	"github.com/DaiHasso/MachGo/types"
+	"MachGo/types"
 )
 
 // UnexportedDefaultAttributes is a set of sensible default attributes for an

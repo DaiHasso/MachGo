@@ -1,7 +1,7 @@
 package dot
 
 import (
-	"github.com/DaiHasso/MachGo/dsl"
+	"MachGo/dsl"
 )
 
 func Eq(a, b dsl.WhereValuer) dsl.WhereConditioner {

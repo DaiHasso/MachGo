@@ -1,7 +1,7 @@
 package dot
 
 import (
-	"github.com/DaiHasso/MachGo/dsl"
+	"MachGo/dsl"
 )
 
 func Query() *dsl.QuerySequence {

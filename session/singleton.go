@@ -3,7 +3,7 @@ package session
 import (
 	"sync"
 
-	"github.com/DaiHasso/MachGo/database"
+	"MachGo/database"
 )
 
 var once sync.Once

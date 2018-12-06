@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/DaiHasso/MachGo/refl"
+	"MachGo/refl"
 )
 
 const tableAliasAlphabet = "abcdefghijklmnopqrstuvwxyz"+

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"log"
 
-	database "github.com/DaiHasso/MachGo"
+	database "MachGo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	logging "github.com/daihasso/slogging"
