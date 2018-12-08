@@ -118,8 +118,8 @@ Then you might create the following object representation:
 type PostImage struct {
     MachGo.DefaultCompositeDBObject
 
-    ID *uuid.UUID `db:"post_id"`
-    ImageID *uuid.UUID `db:"image_id"`
+    ID int64 `db:"post_id"`
+    ImageID int64 `db:"image_id"`
 }
 
 func (self *PostImage) GetTableName() string {
