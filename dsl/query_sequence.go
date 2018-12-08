@@ -813,3 +813,11 @@ func findRelationshipBetweenObjects(object1, object2 MachGo.Object) (
 		"no compatibile relationships for these two objects",
 	)
 }
+
+func (self *QuerySequence) AliasForTable(tableName string) string {
+	if alias, ok := self.tableAliasMap[tableName]; ok {
+		return alias
+	}
+
+	return tableName
+}
