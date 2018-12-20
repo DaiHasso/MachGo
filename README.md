@@ -5,6 +5,8 @@ MachGo is a ORM-ish database library for go.
 
 Because I am chronically lazy, this readme is a WIP.
 
+Check out the [godocs!](https://godoc.org/github.com/DaiHasso/MachGo)
+
 ## Example Usage
 ### Simple usage
 
@@ -82,7 +84,7 @@ And to retrieve all images you might do:
 
 func getImages() *[]*Image {
     result := &Image{}
-    err := MyDb.GetObject(result, id)
+    err := MyDb.FindObjects(result)
     if err != nil {
         panic(err)
     }
@@ -176,12 +178,8 @@ func findImagesForPost(postIDs []string) {
 
     sess := session.New()
     qs := sess.Query(postImage, image).SelectObject(image).Where(
-        Where(
-            Eq(ObjectColumn(postImage, "image_id"), ObjectColumn(image, "id")),
-            In(ObjectColumn(postImage, "post_id"), Const(postIDs...)),
-        ),
+        Eq(ObjectColumn(postImage, "image_id"), ObjectColumn(image, "id")),
+        In(ObjectColumn(postImage, "post_id"), Const(postIDs...)),
     )
 }
 ```
-
-Check out the [godocs!](https://godoc.org/github.com/DaiHasso/MachGo)
