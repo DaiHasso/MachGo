@@ -1,4 +1,4 @@
-package database
+package dbtype
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ type Type int
 
 // Definitions of different database types.
 const (
-	_ Type = iota
+	UnsetDatabaseType Type = iota
 	Mysql
 	Postgres
 )
@@ -26,5 +26,16 @@ func TypeFromString(typeString string) (Type, error) {
 		return Postgres, nil
 	default:
 		return 0, fmt.Errorf("Unknown database type '%s'", typeString)
+	}
+}
+
+func (self Type) String() string {
+	switch(self) {
+	case Mysql:
+		return "mysql"
+	case Postgres:
+		return "postgres"
+	default:
+		return "unknown"
 	}
 }

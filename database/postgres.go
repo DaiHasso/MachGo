@@ -1,3 +1,5 @@
+//+build postgres !nopostgres
+
 package database
 
 import (
@@ -6,6 +8,7 @@ import (
 	logging "github.com/daihasso/slogging"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // Drivers are not directly utilized.
+	"github.com/pkg/errors"
 )
 
 var postgresAddressTemplate = "user=%s password=%s host=%s port=%s " +
@@ -32,4 +35,12 @@ func getPostgresDatabase(
 		Send()
 
 	return sqlx.Open("postgres", fullAddress)
+}
+
+func PostgresConnection(connectionString string) (*sqlx.DB, error) {
+	dbPool, err := sqlx.Open("postgres", connectionString)
+
+	err = errors.Wrapf(err, "Error while opening connection to postgres")
+
+	return dbPool, err
 }

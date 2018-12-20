@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"database/sql/driver"
-	"errors"
+	"reflect"
 	"runtime"
 	"fmt"
 	"runtime/debug"
@@ -11,8 +11,12 @@ import (
 	logging "github.com/daihasso/slogging"
 
 	"github.com/jmoiron/sqlx"
+
 	"MachGo/refl"
 	. "MachGo"
+	"MachGo/database/dbtype"
+	"MachGo/pool"
+	"github.com/pkg/errors"
 )
 
 func initDiffable(obj Object) {
@@ -31,7 +35,7 @@ func initDiffable(obj Object) {
 type Manager struct {
 	*sqlx.DB
 
-	databaseType Type
+	databaseType dbtype.Type
 }
 
 
@@ -237,7 +241,9 @@ func (m *Manager) SaveObject(obj Object) error {
 		if idObj, ok := obj.(IDObject); ok {
 			idColumn, idValue := buildInitID(idObj)
 
-			if idValue == nil {
+			if idValue == nil || reflect.ValueOf(idValue).IsNil() {
+				// FIXME: This whole bit is rather janky. I think ID handling
+				// needs to be done much better.
 				needsIDFromDB = true
 			} else {
 				variableNames = append(variableNames, []byte(idColumn)...)
@@ -301,7 +307,7 @@ func (m *Manager) SaveObject(obj Object) error {
 
 		obj.SetSaved(true)
 
-		return err
+		return nil
 	}
 
 	err := m.objectTransaction(action, obj)
@@ -467,6 +473,9 @@ func (m *Manager) DeleteObject(obj Object) error {
 				whereClause = newWhere
 				whereValues = append(whereValues, newWhereValues...)
 			}
+
+			// #nosec G201
+			whereClause = fmt.Sprintf("WHERE %s", whereClause)
 		} else {
 			panic(errors.New(
 				"provided object is neither an IDObject nor a " +
@@ -535,7 +544,7 @@ func (m *Manager) Transactionized(
 					With("rollback_error", newErr.Error()).
 					With("initial_error", oldError.Error()).
 					Send()
-				return newErr
+				return errors.Wrap(oldError, newErr.Error())
 			}
 		}
 
@@ -581,7 +590,7 @@ func (m *Manager) Transactionized(
 
 // GetDatabaseManager will init and retrieve a mysql database.
 func GetDatabaseManager(
-	databaseType Type,
+	databaseType dbtype.Type,
 	username,
 	password,
 	serverAddress,
@@ -592,7 +601,7 @@ func GetDatabaseManager(
 	var db *sqlx.DB
 
 	switch databaseType {
-	case Mysql:
+	case dbtype.Mysql:
 		db, err = getMysqlDatabase(
 			username,
 			password,
@@ -600,7 +609,7 @@ func GetDatabaseManager(
 			port,
 			dbName,
 		)
-	case Postgres:
+	case dbtype.Postgres:
 		db, err = getPostgresDatabase(
 			username,
 			password,
@@ -625,7 +634,7 @@ func GetDatabaseManager(
 
 // NewManagerFromExisting will create a new Manager from an existing database.
 func NewManagerFromExisting(
-	databaseType Type,
+	databaseType dbtype.Type,
 	existing *sql.DB,
 	databaseName string,
 ) (*Manager, error) {
@@ -635,15 +644,40 @@ func NewManagerFromExisting(
 	return manager, nil
 }
 
+func NewManager() (*Manager, error) {
+	connectionPool, err := pool.GlobalConnectionPool()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error grabbing global ConnectionPool")
+	}
+	
+	manager := &Manager{
+		// TODO: Should just use a pool directly.
+		DB: &connectionPool.DB,
+		databaseType: connectionPool.Type,
+	}
+
+	return manager, nil
+}
+
+func NewManagerFromPool(connPool *pool.ConnectionPool) (*Manager, error) {
+	// TODO: Should just use a pool directly.
+	manager := &Manager{
+		DB: &connPool.DB,
+		databaseType: connPool.Type,
+	}
+
+	return manager, nil
+}
+
 func insertAndSetID(
 	obj IDObject,
 	query string,
 	variableValues []interface{},
 	tx *sqlx.Tx,
-	databaseType Type,
+	databaseType dbtype.Type,
 ) error {
 	switch databaseType {
-	case Mysql:
+	case dbtype.Mysql:
 		result, err := tx.Exec(query, variableValues...)
 		if err != nil {
 			logging.Error("Couldn't exec query.").
@@ -669,7 +703,7 @@ func insertAndSetID(
 			logging.Error("Error while trying to set ID.").
 				With("error", err).Send()
 		}
-	case Postgres:
+	case dbtype.Postgres:
 		query = fmt.Sprintf("%s%s", query, " RETURNING id")
 		row := tx.QueryRowx(query, variableValues...)
 
@@ -696,7 +730,9 @@ func buildIDWhereClause(
 
 	var idValue driver.Value
 	var err error
-	if id != nil {
+	if id != nil && !reflect.ValueOf(id).IsNil() {
+		// FIXME: This whole bit is rather janky. I think ID handling needs to
+		// be done much better.
 		idValue, err = id.Value()
 	}
 	if err == nil && idValue != nil {

@@ -7,14 +7,13 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"unicode"
+
+	"github.com/jmoiron/sqlx"
+	logging "github.com/daihasso/slogging"
 
 	"MachGo"
 	"MachGo/database"
 	"MachGo/refl"
-
-	logging "github.com/daihasso/slogging"
-	"github.com/jmoiron/sqlx"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -29,19 +28,19 @@ var columnAliasNamespaceRegex = regexp.MustCompile(`^([^_]+)_(.*)$`)
 type QuerySequence struct {
 	objects,
 	joinedObjects []MachGo.Object
-	typeAliasMap  map[reflect.Type]string
-	aliasTypeMap  map[string]reflect.Type
-	tableAliasMap  map[string]string
+	typeAliasMap map[reflect.Type]string
+	aliasTypeMap map[string]reflect.Type
+	tableAliasMap map[string]string
 	aliasObjectMap map[string]MachGo.Object
 	columnAliasMap,
 	aliasTableMap map[string]string
 	typeBSFieldMap,
 	typeFieldNameBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS
-	objectAliasCounter      int
+	objectAliasCounter int
 	selectColumnExpressions []SelectColumnExpression
 	selectObjectTables map[string]int
-	whereBuilder            *WhereBuilder
-	manager                 *database.Manager
+	whereClause []Queryable
+	manager *database.Manager
 }
 
 // SelectColumnExpression is a select expression optionally tied to a table.
@@ -51,66 +50,10 @@ type SelectColumnExpression struct {
 	tableNamespace string
 }
 
-func namespacedColumnAliasString(raw string) NamespacedColumn {
-	column := new(NamespacedColumn)
-	column.isNamespaced = false
-	column.columnName = raw
-	if columnAliasNamespaceRegex.MatchString(raw) {
-		results := columnAliasNamespaceRegex.FindStringSubmatch(
-			raw,
-		)
-		column.isNamespaced = true
-		column.tableNamespace = results[1]
-		column.columnName = results[2]
-	}
-
-	return *column
-}
-
-func namespacedColumnToField(nc NamespacedColumn) string {
-	fieldString := ""
-	capitalizeNext := true
-	for i := 0; i < len(nc.columnName); i++ {
-		curChar := nc.columnName[i]
-		if curChar == '_' {
-			capitalizeNext = true
-			continue
-		} else if capitalizeNext {
-			fieldString += string(unicode.ToUpper(rune(curChar)))
-			capitalizeNext = false
-		} else {
-			fieldString += string(curChar)
-		}
-	}
-	return fieldString
-}
-
 type joinExpression struct {
 	fromObject,
 	toObject MachGo.Object
 	relationship *MachGo.Relationship
-}
-
-// ObjectColumn takes the target object and either a property name
-// (ex: "FooBar") or a tag value (ex: "foo_bar") for a column.
-func ObjectColumn(obj MachGo.Object, column string) NamespacedColumn {
-	columnString := column
-	if unicode.IsUpper(rune(column[0])) {
-		field, found := reflect.TypeOf(obj).FieldByName(column)
-		if found {
-			if tagValue, ok := field.Tag.Lookup(`db`); ok {
-				columnString = tagValue
-			}
-		}
-	}
-	namespacedColumn := NamespacedColumn{
-		isNamespaced: true,
-		columnName: columnString,
-		tableAlias: "",
-		tableNamespace: obj.GetTableName(),
-	}
-
-	return namespacedColumn
 }
 
 func newQuerySequence() *QuerySequence {
@@ -130,7 +73,7 @@ func newQuerySequence() *QuerySequence {
 		objectAliasCounter: 0,
 		selectColumnExpressions: make([]SelectColumnExpression, 0),
 		selectObjectTables: make(map[string]int),
-		whereBuilder: nil,
+		whereClause: nil,
 		manager: nil,
 	}
 }
@@ -147,6 +90,16 @@ func NewQuerySequence() *QuerySequence {
 func NewJoin(objects ...MachGo.Object) *QuerySequence {
 
 	querySequence := newQuerySequence()
+
+	manager, err := database.NewManager()
+	if err != nil {
+		// TODO: Maybe this is a panic? Or check for specific error.
+		logging.Debug(
+			"QuerySequence created without global manager set.",
+		).Send()
+	} else {
+		querySequence.manager = manager
+	}
 
 	querySequence.Join(objects...)
 
@@ -260,13 +213,12 @@ func (self *QuerySequence) SelectObject(
 	return self
 }
 
-// Where adds a where clause from a WhereBuilder into the query.
-func (self *QuerySequence) Where(wb *WhereBuilder) *QuerySequence {
-	if self.whereBuilder != nil {
-		logging.Warn("Overriding where clause in query.").Send()
-	}
-
-	self.whereBuilder = wb
+// Where adds a where clause to the query.
+func (self *QuerySequence) Where(
+	firstQuery Queryable, rest ...Queryable,
+) *QuerySequence {
+	clauses := append([]Queryable{firstQuery}, rest...)
+	self.whereClause = append(self.whereClause, clauses...)
 
 	return self
 }
@@ -373,26 +325,26 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 		resultTypes := make(map[string]reflect.Type)
 		aliasIndexes := make(map[string]int)
 		for _, column := range columnNames {
-			columnNS := namespacedColumnAliasString(column)
-			if columnNS.isNamespaced {
-				namespaceType := self.aliasTypeMap[columnNS.tableNamespace]
+			columnIdent := ColumnIdentifierFromResult(column)
+			if tableAlias, ok := columnIdent.Scope(); ok {
+				namespaceType := self.aliasTypeMap[tableAlias]
 				if namespaceType == nil {
 					return fmt.Errorf(
 						"An object with the alias '%s' hasn't been added to "+
 							"the query.",
-						columnNS.tableNamespace,
+						tableAlias,
 					)
 				}
 
-				tableName := self.aliasTableMap[columnNS.tableNamespace]
+				tableName := self.aliasTableMap[tableAlias]
 				index, inSelect := self.selectObjectTables[tableName]
 				if !inSelect {
 					return errors.New("Data not in select returned.")
 				}
 
-				if _, seen := aliasIndexes[columnNS.tableNamespace]; !seen {
-					resultTypes[columnNS.tableNamespace] = namespaceType
-					aliasIndexes[columnNS.tableNamespace] = index
+				if _, seen := aliasIndexes[tableAlias]; !seen {
+					resultTypes[tableAlias] = namespaceType
+					aliasIndexes[tableAlias] = index
 				}
 			}
 		}
@@ -415,11 +367,11 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 			}
 
 			for _, column := range columnNames {
-				columnNS := namespacedColumnAliasString(column)
-				if columnNS.isNamespaced {
-					index := aliasIndexes[columnNS.tableNamespace]
+				columnIdent := ColumnIdentifierFromResult(column)
+				if tableAlias, ok := columnIdent.Scope(); ok {
+					index := aliasIndexes[tableAlias]
 
-					objVal := aliasVals[columnNS.tableNamespace]
+					objVal := aliasVals[tableAlias]
 					objPtr := objVal.Interface()
 					objCoerced := objPtr
 					rowObjs[index] = objCoerced
@@ -428,16 +380,17 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					tagValBSFields := *self.typeBSFieldMap[objType]
 
 					var fieldName string
-					bsField, fieldExists := tagValBSFields[columnNS.columnName]
-					if columnNS.columnName == "id" {
+					columnName := columnIdent.Column()
+					bsField, fieldExists := tagValBSFields[columnName]
+					if columnName == "id" {
 						// TODO: Fix this hacky usecase. It has something to do
 						//       with the nested struct not populating tags
 						//       maybe?
-						fieldName = strings.ToUpper(columnNS.columnName)
+						fieldName = strings.ToUpper(columnName)
 					} else if fieldExists{
 						fieldName = bsField.Name()
 					} else {
-						fieldName = namespacedColumnToField(columnNS)
+						fieldName = LowerSnakeToUpperCamel(columnName)
 					}
 
 					field := reflect.Indirect(objVal).FieldByName(fieldName)
@@ -678,9 +631,10 @@ func (self QuerySequence) buildQuery() (string, []interface{}) {
 	)
 
 	args := make([]interface{}, 0)
-	if self.whereBuilder != nil {
+	if self.whereClause != nil {
 		whereTemplate := `WHERE %s`
-		whereClause, whereArgs := self.whereBuilder.asQuery(&self)
+		combinedWhere := NewMultiAndCondition(self.whereClause...)
+		whereClause, whereArgs := combinedWhere.QueryValue(&self)
 		args = whereArgs
 		query += " " + fmt.Sprintf(whereTemplate, whereClause)
 	}

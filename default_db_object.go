@@ -27,7 +27,7 @@ func (bo *DefaultDBObject) SetSaved(saved bool) {
 // SetID sets the ID.
 func (bo *DefaultDBObject) SetID(id ID) error {
 	intID, ok := id.(*IntID)
-	if !ok {
+	if id != nil && !ok {
 		return fmt.Errorf("Couldn't convert ID '%s' to int64", id)
 	}
 
@@ -43,7 +43,7 @@ func (bo DefaultDBObject) GetID() ID {
 
 // IDIsSet will check if the ID is set and return true if it has been set.
 func (bo DefaultDBObject) IDIsSet() bool {
-	return bo.ID == nil
+	return bo.ID != nil
 }
 
 // GetIDColumn returns the column the ID lives in.

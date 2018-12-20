@@ -4,14 +4,18 @@ import (
     "database/sql"
     "database/sql/driver"
     "fmt"
+    "math/rand"
     "time"
 
     . "github.com/onsi/ginkgo"
     . "github.com/onsi/gomega"
 
     sqlmock "github.com/DATA-DOG/go-sqlmock"
-    "MachGo/database"
+	"github.com/jmoiron/sqlx"
+
+    "MachGo/database/dbtype"
     "MachGo/dsl"
+    "MachGo/pool"
 )
 
 var _ = Describe("QuerySequence", func() {
@@ -82,20 +86,23 @@ var _ = Describe("QuerySequence", func() {
     Context("When a manager is set", func() {
         var (
             err     error
-            manager *database.Manager
             db      *sql.DB
             mock    sqlmock.Sqlmock
         )
         BeforeEach(func() {
             db, mock, err = sqlmock.New()
             Expect(err).NotTo(HaveOccurred())
+            dbx := sqlx.NewDb(db, "mockdb")
 
-            manager, err = database.NewManagerFromExisting(
-                database.Mysql,
-                db,
-                "mockdb",
-            )
-            Expect(err).NotTo(HaveOccurred())
+            connPool := pool.ConnectionPool{
+                DB: *dbx,
+                Type: dbtype.Mysql,
+            }
+
+            pool.SetGlobalConnectionPool(&connPool)
+            globalPool, err := pool.GlobalConnectionPool()
+            Expect(globalPool).ShouldNot(BeNil())
+            Expect(err).Should(BeNil())
         })
         AfterEach(func() {
             db.Close()
@@ -109,7 +116,7 @@ var _ = Describe("QuerySequence", func() {
                     object3,
                     object4,
                     object5,
-                ).SetManager(manager)
+                )
 
                 expectedQ := `SELECT a\.\*, b\.\*, c\.\*, d\.\*, e\.\* ` +
                     "FROM testtable2 b JOIN testtable1 a ON b.foo=a.bar "+
@@ -154,7 +161,7 @@ var _ = Describe("QuerySequence", func() {
                 object2,
             ).SelectObject(
                 object1,
-            ).SetManager(manager)
+            )
             expectedQ := "SELECT a.name as a_name, a.id as a_id, "+
                 "a.created as a_created, a.updated a_updated "+
                 "FROM testtable2 b "+
@@ -192,7 +199,7 @@ var _ = Describe("QuerySequence", func() {
                 object2,
             ).SelectObject(
                 object1,
-            ).SetManager(manager)
+            )
             expectedQ := "SELECT a.name as a_name, a.id as a_id, "+
                 "a.created as a_created, a.updated a_updated "+
                 "FROM testtable2 b JOIN testtable1 a ON b.foo=a.bar"
@@ -233,7 +240,7 @@ var _ = Describe("QuerySequence", func() {
                 object1,
                 object6,
                 object2,
-            ).SetManager(manager)
+            )
             expectedQ := "SELECT a.*, c.*, b.* FROM testtable2 b " +
                 "JOIN testtable1 a ON b.foo=a.bar " +
                 "JOIN testtable6 c ON a.test=c.baz " +
@@ -285,6 +292,108 @@ var _ = Describe("QuerySequence", func() {
                     }
                 }
             }
+        })
+        When("A where is included", func() {
+            BeforeEach(func() {
+                rand.Seed(1337)
+            })
+            It("Should include a simple where in the output", func() {
+                expectedQuery := "SELECT a.*, b.* FROM testtable2 b JOIN " +
+                    "testtable1 a ON b.foo=a.bar WHERE " +
+                    "(a.foo = @const_5799089487994996006)"
+                expected := fmt.Sprintf(
+                    expectedFormat,
+                    expectedQuery,
+                    []interface{}{sql.Named("const_5799089487994996006", 5)},
+                )
+                qs := dsl.NewJoin(object1).Join(object2).Where(
+                    dsl.NewDefaultCondition(
+                        dsl.TableColumnQueryable{
+                            TableName: "testtable1",
+                            ColumnName: "foo",
+                        },
+                        dsl.ConstantQueryable{[]interface{}{5}},
+                        dsl.EqualCombiner,
+                    ),
+                )
+                outputString := qs.PrintQuery()
+                fmt.Fprint(GinkgoWriter, outputString)
+                Expect(outputString).To(Equal(expected))
+            })
+            It("Should include a more complicated where in the output",
+                func() {
+                expectedQuery := "SELECT a.*, b.* FROM testtable2 b JOIN " +
+                    "testtable1 a ON b.foo=a.bar WHERE " +
+                    "(a.foo = @const_5799089487994996006) OR " +
+                    "(b.bar = @const_3156374381228586306)"
+                expected := fmt.Sprintf(
+                    expectedFormat,
+                    expectedQuery,
+                    []interface{}{
+                        sql.Named("const_5799089487994996006", 5),
+                        sql.Named("const_3156374381228586306", 1),
+                    },
+                )
+                qs := dsl.NewJoin(object1).Join(object2).Where(
+                    dsl.NewMultiOrCondition(
+                        dsl.NewDefaultCondition(
+                            dsl.TableColumnQueryable{
+                                TableName: "testtable1",
+                                ColumnName: "foo",
+                            },
+                            dsl.ConstantQueryable{[]interface{}{5}},
+                            dsl.EqualCombiner,
+                        ),
+                        dsl.NewDefaultCondition(
+                            dsl.TableColumnQueryable{
+                                TableName: "testtable2",
+                                ColumnName: "bar",
+                            },
+                            dsl.ConstantQueryable{[]interface{}{1}},
+                            dsl.EqualCombiner,
+                        ),
+                    ),
+                )
+                outputString := qs.PrintQuery()
+                fmt.Fprint(GinkgoWriter, outputString)
+                Expect(outputString).To(Equal(expected))
+            })
+        })
+        It("Should default to AND combining conditions",
+            func() {
+            expectedQuery := "SELECT a.*, b.* FROM testtable2 b JOIN " +
+                "testtable1 a ON b.foo=a.bar WHERE " +
+                "(a.foo = @const_3850181338984981652) AND " +
+                "(b.bar = @const_8857469183970898563)"
+            expected := fmt.Sprintf(
+                expectedFormat,
+                expectedQuery,
+                []interface{}{
+                    sql.Named("const_3850181338984981652", 5),
+                    sql.Named("const_8857469183970898563", 1),
+                },
+            )
+            qs := dsl.NewJoin(object1).Join(object2).Where(
+                dsl.NewDefaultCondition(
+                    dsl.TableColumnQueryable{
+                        TableName: "testtable1",
+                        ColumnName: "foo",
+                    },
+                    dsl.ConstantQueryable{[]interface{}{5}},
+                    dsl.EqualCombiner,
+                ),
+                dsl.NewDefaultCondition(
+                    dsl.TableColumnQueryable{
+                        TableName: "testtable2",
+                        ColumnName: "bar",
+                    },
+                    dsl.ConstantQueryable{[]interface{}{1}},
+                    dsl.EqualCombiner,
+                ),
+            )
+            outputString := qs.PrintQuery()
+            fmt.Fprint(GinkgoWriter, outputString)
+            Expect(outputString).To(Equal(expected))
         })
     })
 })

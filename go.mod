@@ -2,7 +2,6 @@ module MachGo
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.0
-	github.com/daihasso/MachGo v0.0.0-20180815054145-9637b5ef65c9 // indirect
 	github.com/daihasso/slogging v0.1.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-sql-driver/mysql v1.4.0
