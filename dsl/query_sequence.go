@@ -390,7 +390,7 @@ func (self QuerySequence) IntoObjects() ([][]interface{}, error) {
 					} else if fieldExists{
 						fieldName = bsField.Name()
 					} else {
-						fieldName = LowerSnakeToUpperCamel(columnName)
+						fieldName = refl.LowerSnakeToUpperCamel(columnName)
 					}
 
 					field := reflect.Indirect(objVal).FieldByName(fieldName)
