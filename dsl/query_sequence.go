@@ -14,6 +14,7 @@ import (
 	"MachGo"
 	"MachGo/database"
 	"MachGo/refl"
+	"MachGo/pool"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -239,6 +240,18 @@ func (self *QuerySequence) SetManager(
 	manager *database.Manager,
 ) *QuerySequence {
 	self.manager = manager
+
+	return self
+}
+
+func (self *QuerySequence) SetPool(
+	connPool *pool.ConnectionPool,
+) *QuerySequence {
+	var err error
+	self.manager, err = database.NewManagerFromPool(connPool)
+	if err != nil {
+		panic(err)
+	}
 
 	return self
 }
