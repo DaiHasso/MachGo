@@ -1,9 +1,13 @@
 language: go
+go: 1.x
 
 branches:
   only:
     - master
     - develop
+
+env:
+  - GO111MODULE=on
 
 before_install:
   - go get github.com/onsi/gomega
@@ -23,7 +27,6 @@ install:
 
 before_script:
   - golangci-lint run -v --issues-exit-code=0 --disable-all -E=govet -E=errcheck -E=staticcheck -E=unused -E=gosimple -E=structcheck -E=varcheck -E=ineffassign -E=deadcode -E=typecheck -E=lll -E=gosec ./...
-  - export GO111MODULE=on
 
 script:
   - ginkgo -r --failOnPending --cover --trace ./...
