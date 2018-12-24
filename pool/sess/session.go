@@ -22,7 +22,7 @@ func (self Session) Query(objects ...MachGo.Object) *dsl.QuerySequence {
 	return qs
 }
 
-func (self Session) Manager() *database.Manager {
+func (self Session) Manager() (*database.Manager, error) {
 	return database.NewManagerFromPool(self.Pool)
 }
 
@@ -44,6 +44,10 @@ func Query(objects ...MachGo.Object) *dsl.QuerySequence {
 	if len(objects) > 0 {
 		qs.Join(objects...)
 	}
-	qs.SetPool(self.Pool)
+	connPool, err := pool.GlobalConnectionPool()
+	if err != nil {
+		panic(err)
+	}
+	qs.SetPool(connPool)
 	return qs
 }

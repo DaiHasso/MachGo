@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"unicode"
 
+	"github.com/pkg/errors"
+
 	logging "github.com/daihasso/slogging"
 )
 
@@ -22,11 +24,16 @@ func (tvi *TagValueInterface) IsUnset() bool {
 	return reflect.DeepEqual(tvi.Interface, zeroType)
 }
 
+type fieldTagIterator func(string, TagValueInterface)
+
 // GetFieldsByTagWithTagValues will get all fields in an object for a
 // given tag and also the values associated with the specified tag.
+// TODO: This should probably return an iterator or something so that the
+//       resulting code doesn't repeat the iteration.
 func GetFieldsByTagWithTagValues(
 	in interface{},
 	tag string,
+	iterators ...fieldTagIterator,
 ) map[string]TagValueInterface {
 	v := reflect.ValueOf(in)
 	if v.Kind() == reflect.Ptr {
@@ -59,6 +66,10 @@ func GetFieldsByTagWithTagValues(
 			value := v.Field(i).Interface()
 			tagValueInterface := TagValueInterface{bsTagValue.Value(), value}
 			nameTagValueInterfaces[fieldName] = tagValueInterface
+
+			for _, iterator := range iterators {
+				iterator(fieldName, tagValueInterface)
+			}
 		}
 	}
 
@@ -347,7 +358,7 @@ func ElementTypeFromSlice(sliceIn interface{}) (reflect.Type, error) {
 	}
 
 	if sliceVal.Kind() != reflect.Slice {
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"Argumnt to ElementTypeFromSlice must be a Slice or a pointer to "+
 				"a Slice not '%T'.",
 			sliceIn,
@@ -358,4 +369,32 @@ func ElementTypeFromSlice(sliceIn interface{}) (reflect.Type, error) {
 	elemType := sliceType.Elem()
 
 	return elemType, nil
+}
+
+func InitSetField(fieldVal, newVal reflect.Value) error {
+	derefedNewVal := newVal
+	for derefedNewVal.Kind() == reflect.Ptr {
+		derefedNewVal = derefedNewVal.Elem()
+	}
+
+	if fieldVal.Kind() == reflect.Ptr && fieldVal.IsNil() {
+		alloc := reflect.New(Deref(fieldVal.Type()))
+		fieldVal.Set(alloc)
+	}
+
+	derefedFieldVal := fieldVal
+	for derefedFieldVal.Kind() == reflect.Ptr {
+		derefedFieldVal = derefedFieldVal.Elem()
+	}
+
+	switch k := derefedFieldVal.Kind(); k {
+		// TODO: Add more handled kinds.
+		case reflect.Int64:
+		intValue := derefedNewVal.Interface().(int64)
+		derefedFieldVal.SetInt(intValue)
+		default:
+		return errors.Errorf("Unknown kind: %s", k.String())
+	}
+
+	return nil
 }

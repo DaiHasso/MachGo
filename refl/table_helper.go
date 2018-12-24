@@ -3,20 +3,32 @@ package refl
 import (
 	"unicode"
 	"reflect"
+
+	"github.com/pkg/errors"
 )
 
-func GuessTableName(in interface{}) string {
+func GuessTableName(in interface{}) (string, error) {
 	t := reflect.TypeOf(in)
 	t = Deref(t)
 	interfaceName := t.Name()
-	return UpperCamelToSnake(interfaceName)
+	if len(interfaceName) == 0 {
+		return "", errors.New(
+			"Couldn't determine table name because object provided has no " +
+				"struct name.",
+		)
+	}
+	tableName := UpperCamelToSnake(interfaceName)
+	if tableName[len(tableName)-1] != 's' {
+		tableName += "s"
+	}
+	return tableName, nil
 }
 
 func UpperCamelToSnake(raw string) string {
 	fieldString := ""
 	for i := 0; i < len(raw); i++ {
 		curChar := raw[i]
-		if unicode.IsUpper(rune(curChar)) {
+		if unicode.IsUpper(rune(curChar)) && i != 0{
 			fieldString += "_"
 		}
 		fieldString += string(unicode.ToLower(rune(curChar)))
