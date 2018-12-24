@@ -17,6 +17,8 @@ var _ = Describe("ActiveRecordLinker", func() {
 		err := LinkActiveRecord(&object)
 		Expect(err).ToNot(HaveOccurred())
 		err = object.Save()
+		// FIXME: This shouldn't error once the ActiveRecord struct has been
+		//        completed.
 		Expect(err).To(HaveOccurred())
 	})
 

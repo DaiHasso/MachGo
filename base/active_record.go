@@ -23,6 +23,7 @@ type ActiveRecord struct {
 	instanceRef Base
 }
 
+// TODO: Delete this when all the methods are implemented.
 var unimplementedError = "This method hasn't been implemented"
 
 func (self ActiveRecord) Save() error {
@@ -102,7 +103,7 @@ type ObjectActiveRecordLinker func(object Base) error
 
 var LinkActiveRecord = typeBase(reflect.TypeOf((*ActiveRecord)(nil)).Elem())
 
-func ActiveRecordLinkerFactory(ar ActiveRecorder) ObjectActiveRecordLinker {
+func NewActiveRecordLinker(ar ActiveRecorder) ObjectActiveRecordLinker {
 	arType := reflect.TypeOf(ar)
 
 	return typeBase(arType)
