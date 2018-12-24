@@ -52,7 +52,7 @@ type testObjectDatabaseId struct {
 
 func TestDsl(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dsl Package Suite")
+	RunSpecs(t, "Sess Package Suite")
 }
 
 var _ = BeforeSuite(func() {
