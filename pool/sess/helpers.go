@@ -128,6 +128,30 @@ func checkIdentifierSet(
 	return nil
 }
 
+func initIdentifier(object base.Base) (*objectIdentifier, error) {
+	identifier := identifierFromBase(object)
+	if !identifier.exists {
+		return nil, errors.New(
+			"Object provided to SaveObject doesn't have an identifier.",
+		)
+	}
+
+	err := checkIdentifierSet(object, &identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	return &identifier, nil
+}
+
+func objectIdColumn(object base.Base) string {
+	idColumn := "id"
+	if idColumner, ok := object.(base.IDColumner); ok {
+		idColumn = idColumner.IDColumn()
+	}
+	return idColumn
+}
+
 type sortedNamedValueIterator func(string, *sql.NamedArg)
 
 func processSortedNamedValues(

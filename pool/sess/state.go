@@ -51,7 +51,7 @@ func objectIsSaved(object base.Base) (bool, error) {
 	return false, nil
 }
 
-func objectChanged(object base.Base) bool {
+func ObjectChanged(object base.Base) bool {
 	hashKey, err := calculateHashKey(object)
 	if err != nil {
 		return true

@@ -2,6 +2,7 @@ package sess_test
 
 import (
     "database/sql"
+	"errors"
 	"fmt"
 	"math/rand"
 
@@ -42,30 +43,33 @@ func (self testObjectWithIdGenerator) NewID() interface{} {
 	return &self.testId
 }
 
-var _ = Describe("Session Actions", func() {
+var _ = Describe("SaveObject", func() {
 	Context("When a global pool exists", func() {
         var (
             err error
             db *sql.DB
             mock sqlmock.Sqlmock
         )
+		dbType := dbtype.Mysql
         BeforeEach(func() {
             rand.Seed(1337)
 
             db, mock, err = sqlmock.New()
             Expect(err).NotTo(HaveOccurred())
-            dbx := sqlx.NewDb(db, "mockdb")
 
+        })
+		JustBeforeEach(func() {
+            dbx := sqlx.NewDb(db, "mockdb")
             connPool := pool.ConnectionPool{
                 DB: *dbx,
-                Type: dbtype.Mysql,
+                Type: dbType,
             }
 
             pool.SetGlobalConnectionPool(&connPool)
             globalPool, err := pool.GlobalConnectionPool()
             Expect(globalPool).ShouldNot(BeNil())
             Expect(err).Should(BeNil())
-        })
+		})
         AfterEach(func() {
             db.Close()
         })
@@ -167,25 +171,139 @@ var _ = Describe("Session Actions", func() {
 			preInsertTripped = false
 		})
 
-		It("Should exclude id when it's handled by the database", func() {
-			objectID := rand.Int63()
-			expectedQ := `INSERT INTO test_object_database_ids ` +
-				`\(name\) VALUES \(@name\)`
-			object := testObjectDatabaseId{
-				Name: "foo",
-			}
-			mock.ExpectBegin()
-			mock.ExpectExec(expectedQ).WithArgs(
-				"foo",
-			).WillReturnResult(
-				sqlmock.NewResult(objectID, 1),
-			)
-			mock.ExpectCommit()
-			err := SaveObject(&object)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(*object.Id).To(Equal(objectID))
-		})
+		Context("and the id is handled by the database", func() {
+			Context("and the database is mysql", func() {
+				It("Should exclude id from the query and read the result " +
+					"back", func() {
+					objectID := rand.Int63()
+					expectedQ := `INSERT INTO test_object_database_ids ` +
+						`\(name\) VALUES \(@name\)`
+					object := testObjectDatabaseId{
+						Name: "foo",
+					}
+					mock.ExpectBegin()
+					mock.ExpectExec(expectedQ).WithArgs(
+						"foo",
+					).WillReturnResult(
+						sqlmock.NewResult(objectID, 1),
+					)
+					mock.ExpectCommit()
+					err := SaveObject(&object)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*object.Id).To(Equal(objectID))
+				})
 
+				It("Should handle an error when reading the id from the" +
+					" result", func() {
+					expectedError := errors.New("Database explosion.")
+					expectedQ := `INSERT INTO test_object_database_ids ` +
+						`\(name\) VALUES \(@name\)`
+					object := testObjectDatabaseId{
+						Name: "foo",
+					}
+					mock.ExpectBegin()
+					mock.ExpectExec(expectedQ).WithArgs(
+						"foo",
+					).WillReturnResult(
+						sqlmock.NewErrorResult(expectedError),
+					)
+					mock.ExpectRollback()
+					err := SaveObject(&object)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(MatchRegexp(expectedError.Error()))
+					Expect(object.Id).To(BeNil())
+				})
+
+				It("Should handle an error when executing the statement",
+					func() {
+					expectedError := errors.New("Database explosion.")
+					expectedQ := `INSERT INTO test_object_database_ids ` +
+						`\(name\) VALUES \(@name\)`
+					object := testObjectDatabaseId{
+						Name: "foo",
+					}
+					mock.ExpectBegin()
+					mock.ExpectExec(expectedQ).WithArgs(
+						"foo",
+					).WillReturnError(expectedError)
+					mock.ExpectRollback()
+					err := SaveObject(&object)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(MatchRegexp(expectedError.Error()))
+					Expect(object.Id).To(BeNil())
+				})
+			})
+
+			Context("and the database is postgres", func() {
+				BeforeEach(func(){
+					dbType = dbtype.Postgres
+				})
+				It("Should read back the returned id", func() {
+					objectID := rand.Int63()
+					expectedQ := `INSERT INTO test_object_database_ids ` +
+						`\(name\) VALUES \(@name\) RETURNING id`
+					object := testObjectDatabaseId{
+						Name: "foo",
+					}
+					mock.ExpectBegin()
+					mock.ExpectQuery(expectedQ).WithArgs(
+						"foo",
+					).WillReturnRows(
+						sqlmock.NewRows([]string{
+							"id",
+						}).AddRow(objectID),
+					)
+					mock.ExpectCommit()
+					err := SaveObject(&object)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*object.Id).To(Equal(objectID))
+				})
+
+				It("Should handle an error while reading returned id " +
+					"gracefully", func() {
+					expectedError := errors.New("Database explosion.")
+					expectedQ := `INSERT INTO test_object_database_ids ` +
+						`\(name\) VALUES \(@name\) RETURNING id`
+					object := testObjectDatabaseId{
+						Name: "foo",
+					}
+					mock.ExpectBegin()
+					mock.ExpectQuery(expectedQ).WithArgs(
+						"foo",
+					).WillReturnError(expectedError)
+					mock.ExpectRollback()
+
+					err := SaveObject(&object)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(MatchRegexp(expectedError.Error()))
+					Expect(object.Id).To(BeNil())
+				})
+			})
+
+			Context("and the database type is unkown", func() {
+				BeforeEach(func(){
+					dbType = dbtype.UnsetDatabaseType
+				})
+
+				It("Should handle error out gracefully", func() {
+					expectedQ := `INSERT INTO test_object_database_ids ` +
+						`\(name\) VALUES \(@name\) RETURNING id`
+					object := testObjectDatabaseId{
+						Name: "foo",
+					}
+					mock.ExpectBegin()
+					mock.ExpectQuery(expectedQ).WithArgs(
+						"foo",
+					)
+					mock.ExpectRollback()
+
+					err := SaveObject(&object)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(MatchRegexp("Unsupported db type"))
+					Expect(object.Id).To(BeNil())
+				})
+			})
+		})
 		It("Should call NewID when id is not set", func() {
 			objectID := rand.Int63()
 			expectedQ := `INSERT INTO test_object_with_id_generators ` +
