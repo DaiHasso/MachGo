@@ -25,23 +25,6 @@ func (testObjectCustomTable) TableName() string {
 	return "test_custom_object"
 }
 
-type testObjectCustomId struct {
-	CustomId int64
-}
-
-func (self testObjectCustomId) SetID(in interface{}) error {
-	self.CustomId = in.(int64)
-	return nil
-}
-
-func (self testObjectCustomId) ID() (interface{}, bool) {
-	set := true
-	if self.CustomId == 0 {
-		set = false
-	}
-	return self.CustomId, set
-}
-
 type testObjectDatabaseId struct {
 	base.DatabaseManagedID
 

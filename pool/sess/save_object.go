@@ -38,11 +38,7 @@ func SaveObject(object base.Base) error {
 		if _, ok := object.(base.DatabaseIDGenerator); ok {
 			databaseManagedId = true
 			removeID := func(columnName string) bool {
-				if columnName == idColumn {
-					return true
-				}
-
-				return false
+				return columnName == idColumn
 			}
 			columnFilters = append(columnFilters, removeID)
 		} else {
