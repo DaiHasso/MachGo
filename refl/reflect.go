@@ -20,8 +20,7 @@ type TagValueInterface struct {
 
 // IsUnset checks if the value of the TagValueInterface is unset.
 func (tvi *TagValueInterface) IsUnset() bool {
-	zeroType := reflect.Zero(reflect.TypeOf(tvi.Interface)).Interface()
-	return reflect.DeepEqual(tvi.Interface, zeroType)
+	return IsZeroValue(tvi.Interface)
 }
 
 type fieldTagIterator func(string, TagValueInterface)
@@ -397,4 +396,10 @@ func InitSetField(fieldVal, newVal reflect.Value) error {
 	}
 
 	return nil
+}
+
+func IsZeroValue(in interface{}) bool {
+	zeroType := reflect.Zero(reflect.TypeOf(in)).Interface()
+	result := reflect.DeepEqual(in, zeroType)
+	return result
 }
