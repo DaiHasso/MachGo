@@ -17,14 +17,12 @@ type objectIdentifier struct {
 	value interface{}
 }
 
-func genericIDMatcher(s string) bool {
-	// TODO: Are there any other cases?
-
-	if s == "Id" || s == "ID" {
-		return true
+func isEmptyValue(in interface{}) bool {
+	if allowZeroValues {
+		return false
 	}
-
-	return false
+	result := refl.IsZeroValue(in)
+	return result
 }
 
 func identifierFromBase(object base.Base) objectIdentifier {
@@ -45,23 +43,30 @@ func identifierFromBase(object base.Base) objectIdentifier {
 		return identifier
 	}
 
-	// Fallback on pulling it from the struct directly.
-	value := reflect.Indirect(reflect.ValueOf(object))
-	matched := false
-	identifierValue := value.FieldByNameFunc(func(s string) bool{
-		result := genericIDMatcher(s)
-		matched = matched || result
-		return result
-	})
-	if matched {
+	fieldGroupings := refl.GetGroupedFieldsWithBS(
+		object,
+		refl.GroupFieldsByTagValue("db"),
+	)
+	tagValueBSFields := fieldGroupings[0]
+
+	if bsField, ok := (*tagValueBSFields)["id"]; ok {
 		identifier.exists = true
-		if identifierValue.IsValid() {
-			idIn := identifierValue.Interface()
-			deepVal := identifierValue
+
+		fieldName := bsField.Name()
+		objVal := reflect.ValueOf(object)
+		field := objVal.Elem().FieldByName(fieldName)
+
+		if field.IsValid() {
+			deepVal := field
 			for deepVal.Kind() == reflect.Ptr {
 				deepVal = reflect.Indirect(deepVal)
 			}
 			if !deepVal.IsValid() || deepVal.Interface() == nil {
+				return identifier
+			}
+
+			idIn := field.Interface()
+			if isEmptyValue(deepVal.Interface()) {
 				return identifier
 			}
 

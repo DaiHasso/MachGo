@@ -165,17 +165,19 @@ func SaveObject(object base.Base) error {
 			}
 		}
 
+		if postInserter, ok := object.(base.PostInserter); ok {
+			err = postInserter.PostInsertActions()
+			if err != nil {
+				return errors.Wrap(
+					err, "Error while running PostInsertActions",
+				)
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
 		return err
-	}
-
-	if postInserter, ok := object.(base.PostInserter); ok {
-		err = postInserter.PostInsertActions()
-		if err != nil {
-			return errors.Wrap(err, "Error while running PostInsertActions")
-		}
 	}
 
 	err = setObjectSaved(object)

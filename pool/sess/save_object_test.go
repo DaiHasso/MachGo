@@ -90,7 +90,7 @@ var _ = Describe("SaveObject", func() {
 			mock.ExpectCommit()
 			err := SaveObject(&object)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(Saved(object)).To(BeTrue())
+			Expect(Saved(&object)).To(BeTrue())
 		})
 
 		It("Should be able to save an object with a custom table", func() {
@@ -190,7 +190,7 @@ var _ = Describe("SaveObject", func() {
 					mock.ExpectCommit()
 					err := SaveObject(&object)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(*object.Id).To(Equal(objectID))
+					Expect(object.Id).To(Equal(objectID))
 				})
 
 				It("Should handle an error when reading the id from the" +
@@ -211,7 +211,7 @@ var _ = Describe("SaveObject", func() {
 					err := SaveObject(&object)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(MatchRegexp(expectedError.Error()))
-					Expect(object.Id).To(BeNil())
+					Expect(object.Id).To(BeZero())
 				})
 
 				It("Should handle an error when executing the statement",
@@ -230,7 +230,7 @@ var _ = Describe("SaveObject", func() {
 					err := SaveObject(&object)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(MatchRegexp(expectedError.Error()))
-					Expect(object.Id).To(BeNil())
+					Expect(object.Id).To(BeZero())
 				})
 			})
 
@@ -256,7 +256,7 @@ var _ = Describe("SaveObject", func() {
 					mock.ExpectCommit()
 					err := SaveObject(&object)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(*object.Id).To(Equal(objectID))
+					Expect(object.Id).To(Equal(objectID))
 				})
 
 				It("Should handle an error while reading returned id " +
@@ -276,7 +276,7 @@ var _ = Describe("SaveObject", func() {
 					err := SaveObject(&object)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(MatchRegexp(expectedError.Error()))
-					Expect(object.Id).To(BeNil())
+					Expect(object.Id).To(Equal(int64(0)))
 				})
 			})
 
@@ -300,10 +300,11 @@ var _ = Describe("SaveObject", func() {
 					err := SaveObject(&object)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(MatchRegexp("Unsupported db type"))
-					Expect(object.Id).To(BeNil())
+					Expect(object.Id).To(Equal(int64(0)))
 				})
 			})
 		})
+
 		It("Should call NewID when id is not set", func() {
 			objectID := rand.Int63()
 			expectedQ := `INSERT INTO test_object_with_id_generators ` +
@@ -354,7 +355,7 @@ var _ = Describe("SaveObject", func() {
 			mock.ExpectCommit()
 			err := SaveObject(&object)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(Saved(object)).To(BeTrue())
+			Expect(Saved(&object)).To(BeTrue())
 
 			mock.ExpectBegin()
 			mock.ExpectExec(expectedQ2).WithArgs(
@@ -365,7 +366,7 @@ var _ = Describe("SaveObject", func() {
 			mock.ExpectCommit()
 			err = SaveObject(&object2)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(Saved(object)).To(BeTrue())
+			Expect(Saved(&object)).To(BeTrue())
 		})
 
 		It("Should fail on an object with no discernible identifier", func() {
@@ -391,8 +392,8 @@ var _ = Describe("SaveObject", func() {
 			"table name", func() {
 			objectID := rand.Int63()
 			object := struct{
-				Id int64
-				Name string
+				Id int64 `db:"id"`
+				Name string `db:"name"`
 			}{
 				Id: objectID,
 				Name: "test",

@@ -45,7 +45,7 @@ func (self testObjectCustomId) ID() (interface{}, bool) {
 type testObjectDatabaseId struct {
 	base.DatabaseManagedID
 
-	Id *int64 `db:"id"`
+	Id int64 `db:"id"`
 	Name string `db:"name"`
 }
 
