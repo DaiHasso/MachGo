@@ -203,7 +203,7 @@ func updateWhere(
 	bindvar := "identifier"
 	namedIdentifier := sql.Named(bindvar, identifier.value)
 
-	whereString = fmt.Sprintf("%s=@%s", idColumn, bindvar)
+	whereString = fmt.Sprintf("%s = @%s", idColumn, bindvar)
 
 	return whereString, []interface{}{namedIdentifier}
 }
