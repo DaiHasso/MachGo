@@ -9,14 +9,36 @@ import (
 	"github.com/pkg/errors"
 
 	"MachGo/base"
-	"MachGo/pool"
 	"MachGo/database/dbtype"
 )
 
-func SaveObject(object base.Base) error {
+var saveObjectStatementTemplate = `INSERT INTO %s ({columns}) VALUES ` +
+	`({bindvars})`
+
+func saveObjects(objects []base.Base, session *Session) []error {
+	// TODO: Add option for stopping on error.
+	// NOTE: Originally this went through all the objects and constructed one
+	//       insert with multiple values but that presented problems with
+	//       reading back IDs from the DB. Maybe there's a better way but this
+	//       seems like the best for now.
+	var allErrors []error
+	for i, object := range objects {
+		err := saveObject(object, session)
+		if err != nil {
+			allErrors = append(
+				allErrors,
+				errors.Wrapf(err, "Error while saving object #%d", i+1),
+			)
+		}
+	}
+
+	return allErrors
+}
+
+func saveObject(object base.Base, session *Session) error {
 	var (
 		err error
-		columnFilters []func(string) bool
+		columnFilters []ColumnFilter
 		databaseManagedId bool
 	)
 
@@ -37,13 +59,14 @@ func SaveObject(object base.Base) error {
 	if !identifier.isSet {
 		if _, ok := object.(base.DatabaseIDGenerator); ok {
 			databaseManagedId = true
-			removeID := func(columnName string) bool {
+			removeID := func(columnName string, _ *sql.NamedArg) bool {
 				return columnName == idColumn
 			}
 			columnFilters = append(columnFilters, removeID)
 		} else {
 			return errors.New(
-				"Object has no dentifier set.",
+				"Object has no identifier set and does not have an ID" +
+				" generator.",
 			)
 		}
 	}
@@ -65,100 +88,75 @@ func SaveObject(object base.Base) error {
 	//       little slow in practice it might be worth revisiting this
 	//       approach or at least having it toggle-able in some way.
 
-	var (
-		namesString, bindVarsString string
-		sortedNamedValues []interface{}
-	)
-	empty := true
-	processSortedNamedValues(
-		object, func(columnName string, namedArg *sql.NamedArg) {
-			for _, filter := range columnFilters {
-				if filter(columnName) {
-					return
-				}
-			}
+	queryParts := QueryPartsFromObject(object, columnFilters...)
 
-			if empty {
-				empty = false
-			} else {
-				namesString += ", "
-				bindVarsString += ", "
-			}
-
-			namesString += columnName
-			bindVarsString += "@" + columnName
-			sortedNamedValues = append(sortedNamedValues, *namedArg)
-		},
-	)
-
-	query := fmt.Sprintf(
-		saveObjectStatementTemplate,
-		tableName,
-		namesString,
-		bindVarsString,
-	)
+	query := queryParts.Format(saveObjectStatementTemplate, tableName)
 
 	logging.Debug("Running SaveObject statement.").
 		With("statement", query).
 		With("object_type", fmt.Sprintf("%T", object)).
-		With("values", fmt.Sprintf("%#+v", sortedNamedValues)).
+		With("values", fmt.Sprintf("%#+v", queryParts.VariableValues)).
 		Send()
 
 	var dbType dbtype.Type
 	if databaseManagedId {
-		connPool, _ := pool.GlobalConnectionPool()
-		dbType = connPool.Type
+		dbType = session.Pool.Type
+
+		err = insertReturningId(
+			object, query, idColumn, dbType, queryParts.VariableValues,
+		)
+	} else {
+		err = basicInsert(
+			object, query, idColumn, dbType, queryParts.VariableValues,
+		)
+	}
+	if err != nil {
+		return err
 	}
 
-	err = Transactionized(func(tx *sqlx.Tx) error {
+	err = setObjectSaved(object)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SaveObject(object base.Base) error {
+	session, err := NewSessionFromGlobal()
+	if err != nil {
+		return errors.Wrap(
+			err, "Couldn't get session from global connection pool",
+		)
+	}
+
+	return saveObject(object, session)
+}
+
+func SaveObjects(objects ...base.Base) []error {
+	session, err := NewSessionFromGlobal()
+	if err != nil {
+		return []error{
+			errors.Wrap(
+				err, "Couldn't get session from global connection pool",
+			),
+		}
+	}
+
+	return saveObjects(objects, session)
+}
+
+func insertActionWithPostInserter(
+	object base.Base, statement string, insertAction func(tx *sqlx.Tx) error,
+) error {
+	return Transactionized(func(tx *sqlx.Tx) error {
 		var err error
 
-		query = tx.Rebind(query)
+		statement = tx.Rebind(statement)
 
-		if databaseManagedId {
-			if dbType == dbtype.Postgres {
-				if dbType == dbtype.Postgres {
-					query = fmt.Sprintf("%s RETURNING %s", query, idColumn)
-				}
-				row := tx.QueryRowx(query, sortedNamedValues...)
-
-				err := row.StructScan(object)
-				if err != nil {
-					return errors.Wrap(
-						err, "Error while reading returned id from database",
-					)
-				}
-			} else if dbType == dbtype.Mysql {
-				result, err := tx.Exec(query, sortedNamedValues...)
-				if err != nil {
-					return errors.Wrap(
-						err, "Error executing insert",
-					)
-				}
-
-				id, err := result.LastInsertId()
-				if err != nil {
-					return errors.Wrap(
-						err, "Couldn't get returned id from database",
-					)
-				}
-
-				err = setIdentifierOnBase(object, id)
-				if err != nil {
-					return errors.Wrap(err, "Error setting new id on object")
-				}
-			} else {
-				return errors.Errorf(
-					"Unsupported db type '%s' for database " +
-					"managed ID",
-					dbType,
-				)
-			}
-		} else {
-			_, err = tx.Exec(query, sortedNamedValues...)
-			if err != nil {
-				return err
-			}
+		err = insertAction(tx)
+		if err != nil {
+			return err
 		}
 
 		if postInserter, ok := object.(base.PostInserter); ok {
@@ -172,14 +170,85 @@ func SaveObject(object base.Base) error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
+}
 
-	err = setObjectSaved(object)
-	if err != nil {
-		return err
-	}
+func basicInsert(
+	object base.Base,
+	statement, idColumn string,
+	dbType dbtype.Type,
+	insertValues []interface{},
+) error {
+	return insertActionWithPostInserter(
+		object,
+		statement,
+		func(tx *sqlx.Tx) error {
+			_, err := tx.Exec(statement, insertValues...)
+			return err
+		},
+	)
+}
 
+func insertReturningId(
+	object base.Base,
+	statement, idColumn string,
+	dbType dbtype.Type,
+	insertValues []interface{},
+) error {
+	return insertActionWithPostInserter(
+		object,
+		statement,
+		func(tx *sqlx.Tx) error {
+			return insertReadingId(
+				object, statement, idColumn, dbType, insertValues, tx,
+			)
+		},
+	)
+}
+
+func insertReadingId(
+	object base.Base,
+	statement, idColumn string,
+	dbType dbtype.Type,
+	insertValues []interface{},
+	tx *sqlx.Tx,
+) error {
+	if dbType == dbtype.Postgres {
+		if dbType == dbtype.Postgres {
+			statement = fmt.Sprintf("%s RETURNING %s", statement, idColumn)
+		}
+		row := tx.QueryRowx(statement, insertValues...)
+
+		err := row.StructScan(object)
+		if err != nil {
+			return errors.Wrap(
+				err, "Error while reading returned id from database",
+			)
+		}
+	} else if dbType == dbtype.Mysql {
+		result, err := tx.Exec(statement, insertValues...)
+		if err != nil {
+			return errors.Wrap(
+				err, "Error executing insert",
+			)
+		}
+
+		id, err := result.LastInsertId()
+		if err != nil {
+			return errors.Wrap(
+				err, "Couldn't get returned id from database",
+			)
+		}
+
+		err = setIdentifierOnBase(object, id)
+		if err != nil {
+			return errors.Wrap(err, "Error setting new id on object")
+		}
+	} else {
+		return errors.Errorf(
+			"Unsupported db type '%s' for database " +
+				"managed ID",
+			dbType,
+		)
+	}
 	return nil
 }

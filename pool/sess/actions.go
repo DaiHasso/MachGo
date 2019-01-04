@@ -6,8 +6,6 @@ import (
 	"MachGo/base"
 )
 
-var saveObjectStatementTemplate = `INSERT INTO %s (%s) VALUES (%s)`
-
 func Saved(object base.Base) bool {
 	// NOTE: This requires a pointer vecause objectIsSaved and further
 	//       calees assume a ptr, is this appropriate?
