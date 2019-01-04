@@ -2,6 +2,7 @@ package sess
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -26,6 +27,7 @@ func isEmptyValue(in interface{}) bool {
 }
 
 func identifierFromBase(object base.Base) objectIdentifier {
+	// TODO: Support composites.
 	identifier := objectIdentifier{
 		exists: false,
 		isSet: false,
@@ -189,4 +191,19 @@ func processSortedNamedValues(
 			iterator(variableName, namedArg)
 		}
 	}
+}
+
+func updateWhere(
+	object base.Base, identifier objectIdentifier,
+) (string, []interface{}) {
+	// TODO: Support composites.
+	whereString := ""
+	idColumn := objectIdColumn(object)
+
+	bindvar := "identifier"
+	namedIdentifier := sql.Named(bindvar, identifier.value)
+
+	whereString = fmt.Sprintf("%s=@%s", idColumn, bindvar)
+
+	return whereString, []interface{}{namedIdentifier}
 }
