@@ -8,58 +8,41 @@ import (
 	"MachGo/base"
 )
 
-var (
-	bindvarReplacers = []string{
-		"bindvars", "bindvar",
-	}
-	columnNameReplacers = []string{
-		"columnNames", "columnnames", "columnName", "columnname", "columns",
-	}
-)
-
 type QueryParts struct {
 	Bindvars,
-	ColumnNames string
+	ColumnNames []string
 	VariableValues []interface{}
 }
 
-func (QueryParts) appendParts(existing *string, parts []string) {
-	if len(*existing) > 0 {
-		*existing += ", "
-	}
-
-	*existing += strings.Join(parts, ", ")
-}
-
 func (self *QueryParts) AddBindvar(bindvars ...string) {
-	self.appendParts(&self.Bindvars, bindvars)
+	self.Bindvars = append(self.Bindvars, bindvars...)
 }
 
 func (self *QueryParts) AddColumnName(columnNames ...string) {
-	self.appendParts(&self.ColumnNames, columnNames)
+	self.ColumnNames = append(self.ColumnNames, columnNames...)
 }
 
 func (self *QueryParts) AddValue(values ...interface{}) {
 	self.VariableValues = append(self.VariableValues, values...)
 }
 
-func (self QueryParts) Format(template string, extras ...interface{}) string {
-	// TODO: Using replacer here might not be the most efficient method.
-	var pairs []string
-	for _, replacementString := range bindvarReplacers {
-		pairs = append(
-			pairs,
-			[]string{"{" + replacementString + "}", self.Bindvars}...,
-		)
+func (self QueryParts) AsInsert() string {
+	columns := strings.Join(self.ColumnNames, ", ")
+	bindvars := strings.Join(self.Bindvars, ", ")
+
+	return fmt.Sprintf("(%s) VALUES (%s)", columns, bindvars)
+}
+
+func (self QueryParts) AsUpdate() string {
+	result := ""
+	for i, column := range self.ColumnNames {
+		if len(result) != 0 {
+			result += ", "
+		}
+		result += fmt.Sprintf("%s = %s", column, self.Bindvars[i])
 	}
-	for _, replacementString := range columnNameReplacers {
-		pairs = append(
-			pairs,
-			[]string{"{" + replacementString + "}", self.ColumnNames}...,
-		)
-	}
-	replacer := strings.NewReplacer(pairs...)
-	return fmt.Sprintf(replacer.Replace(template), extras...)
+
+	return result
 }
 
 type ColumnFilter func(string, *sql.NamedArg) bool

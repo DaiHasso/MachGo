@@ -12,8 +12,7 @@ import (
 	"MachGo/database/dbtype"
 )
 
-var saveObjectStatementTemplate = `INSERT INTO %s ({columns}) VALUES ` +
-	`({bindvars})`
+var saveObjectStatementTemplate = `INSERT INTO %s %s`
 
 func saveObjects(objects []base.Base, session *Session) []error {
 	// TODO: Add option for stopping on error.
@@ -90,7 +89,9 @@ func saveObject(object base.Base, session *Session) error {
 
 	queryParts := QueryPartsFromObject(object, columnFilters...)
 
-	query := queryParts.Format(saveObjectStatementTemplate, tableName)
+	query := fmt.Sprintf(
+		saveObjectStatementTemplate, tableName, queryParts.AsInsert(),
+	)
 
 	logging.Debug("Running SaveObject statement.").
 		With("statement", query).
