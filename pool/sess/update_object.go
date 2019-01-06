@@ -12,6 +12,17 @@ import (
 var updateObjectStatementTemplate = `UPDATE %s SET %s WHERE %s`
 
 func UpdateObject(object base.Base) error {
+	session, err := NewSessionFromGlobal()
+	if err != nil {
+		return errors.Wrap(
+			err, "Couldn't get session from global connection pool",
+		)
+	}
+
+	return updateObject(object, session)
+}
+
+func updateObject(object base.Base, session *Session) error {
 	identifier := identifierFromBase(object)
 	if !identifier.exists {
 		return errors.New(
@@ -43,7 +54,7 @@ func UpdateObject(object base.Base) error {
 		whereString,
 	)
 
-	err = Transactionized(func(tx *sqlx.Tx) error {
+	err = session.Transactionized(func(tx *sqlx.Tx) error {
 		var err error
 
 		insertValues := append(queryParts.VariableValues, whereValues...)
