@@ -104,18 +104,14 @@ func saveObject(object base.Base, session *Session) error {
 		With("values", fmt.Sprintf("%#+v", queryParts.VariableValues)).
 		Send()
 
-	var dbType dbtype.Type
-	if databaseManagedId {
-		dbType = session.Pool.Type
-
-		err = insertReturningId(
-			object, query, idColumn, dbType, queryParts.VariableValues,
-		)
-	} else {
-		err = basicInsert(
-			object, query, idColumn, dbType, queryParts.VariableValues,
-		)
-	}
+	err = doInsertion(
+		session,
+		object,
+		query,
+		idColumn,
+		queryParts.VariableValues,
+		databaseManagedId,
+	)
 	if err != nil {
 		return err
 	}
@@ -161,9 +157,12 @@ func SaveObjects(args ...ObjectOrOption) []error {
 }
 
 func insertActionWithPostInserter(
-	object base.Base, statement string, insertAction func(tx *sqlx.Tx) error,
+	session *Session,
+	object base.Base,
+	statement string,
+	insertAction func(tx *sqlx.Tx) error,
 ) error {
-	return Transactionized(func(tx *sqlx.Tx) error {
+	return session.Transactionized(func(tx *sqlx.Tx) error {
 		var err error
 
 		statement = tx.Rebind(statement)
@@ -187,12 +186,13 @@ func insertActionWithPostInserter(
 }
 
 func basicInsert(
+	session *Session,
 	object base.Base,
 	statement, idColumn string,
-	dbType dbtype.Type,
 	insertValues []interface{},
 ) error {
 	return insertActionWithPostInserter(
+		session,
 		object,
 		statement,
 		func(tx *sqlx.Tx) error {
@@ -203,12 +203,14 @@ func basicInsert(
 }
 
 func insertReturningId(
+	session *Session,
 	object base.Base,
 	statement, idColumn string,
 	dbType dbtype.Type,
 	insertValues []interface{},
 ) error {
 	return insertActionWithPostInserter(
+		session,
 		object,
 		statement,
 		func(tx *sqlx.Tx) error {
@@ -265,4 +267,23 @@ func insertReadingId(
 		)
 	}
 	return nil
+}
+
+func doInsertion(
+	session *Session,
+	object base.Base,
+	statement, idColumn string,
+	insertValues []interface{},
+	databaseManagedId bool,
+) error {
+	if databaseManagedId {
+		dbType := session.Pool.Type
+		return insertReturningId(
+			session, object, statement, idColumn, dbType, insertValues,
+		)
+	}
+
+	return basicInsert(
+		session, object, statement, idColumn, insertValues,
+	)
 }
