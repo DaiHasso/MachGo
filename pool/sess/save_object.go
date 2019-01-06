@@ -14,7 +14,9 @@ import (
 
 var saveObjectStatementTemplate = `INSERT INTO %s %s`
 
-func saveObjects(objects []base.Base, session *Session) []error {
+func saveObjects(
+	objects []base.Base, session *Session, opts *actionOptions,
+) []error {
 	// TODO: Add option for stopping on error.
 	// NOTE: Originally this went through all the objects and constructed one
 	//       insert with multiple values but that presented problems with
@@ -28,6 +30,9 @@ func saveObjects(objects []base.Base, session *Session) []error {
 				allErrors,
 				errors.Wrapf(err, "Error while saving object #%d", i+1),
 			)
+			if opts.stopOnFailure {
+				return allErrors
+			}
 		}
 	}
 
@@ -134,7 +139,7 @@ func SaveObject(object base.Base) error {
 	return saveObject(object, session)
 }
 
-func SaveObjects(objects ...base.Base) []error {
+func SaveObjects(args ...ObjectOrOption) []error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {
 		return []error{
@@ -144,7 +149,15 @@ func SaveObjects(objects ...base.Base) []error {
 		}
 	}
 
-	return saveObjects(objects, session)
+	objects, options := separateArgs(args)
+
+	optionSet := new(actionOptions)
+
+	for _, option := range options {
+		option(optionSet)
+	}
+
+	return saveObjects(objects, session, optionSet)
 }
 
 func insertActionWithPostInserter(

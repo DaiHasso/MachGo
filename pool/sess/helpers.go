@@ -207,3 +207,19 @@ func updateWhere(
 
 	return whereString, []interface{}{namedIdentifier}
 }
+
+func separateArgs(args []ObjectOrOption) ([]base.Base, []actionOption) {
+	var (
+		objects []base.Base
+		options []actionOption
+	)
+	for _, arg := range args {
+		if opt, ok := arg.(actionOption); ok {
+			options = append(options, opt)
+		} else {
+			objects = append(objects, arg)
+		}
+	}
+
+	return objects, options
+}
