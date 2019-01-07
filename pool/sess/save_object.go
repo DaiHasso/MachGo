@@ -15,13 +15,14 @@ import (
 var saveObjectStatementTemplate = `INSERT INTO %s %s`
 
 func saveObjects(
-	objects []base.Base, session *Session, opts *actionOptions,
+	args []ObjectOrOption, session *Session,
 ) []error {
-	// TODO: Add option for stopping on error.
 	// NOTE: Originally this went through all the objects and constructed one
 	//       insert with multiple values but that presented problems with
 	//       reading back IDs from the DB. Maybe there's a better way but this
 	//       seems like the best for now.
+	objects, options := separateAndApply(args)
+
 	var allErrors []error
 	for i, object := range objects {
 		err := saveObject(object, session)
@@ -30,7 +31,7 @@ func saveObjects(
 				allErrors,
 				errors.Wrapf(err, "Error while saving object #%d", i+1),
 			)
-			if opts.stopOnFailure {
+			if options.stopOnFailure {
 				return allErrors
 			}
 		}
@@ -144,16 +145,7 @@ func SaveObjects(args ...ObjectOrOption) []error {
 			),
 		}
 	}
-
-	objects, options := separateArgs(args)
-
-	optionSet := new(actionOptions)
-
-	for _, option := range options {
-		option(optionSet)
-	}
-
-	return saveObjects(objects, session, optionSet)
+	return saveObjects(args, session)
 }
 
 func insertActionWithPostInserter(

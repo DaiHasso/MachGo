@@ -60,13 +60,15 @@ func deleteObject(object base.Base, session *Session) error {
 }
 
 func deleteObjects(
-	objects []base.Base, session *Session, opts *actionOptions,
+	args []ObjectOrOption, session *Session,
 ) []error {
-	// TODO: Add option for stopping on error.
 	// NOTE: Originally this went through all the objects and constructed one
 	//       insert with multiple values but that presented problems with
 	//       reading back IDs from the DB. Maybe there's a better way but this
 	//       seems like the best for now.
+
+	objects, options := separateAndApply(args)
+
 	var allErrors []error
 	for i, object := range objects {
 		err := deleteObject(object, session)
@@ -75,7 +77,7 @@ func deleteObjects(
 				allErrors,
 				errors.Wrapf(err, "Error while saving object #%d", i+1),
 			)
-			if opts.stopOnFailure {
+			if options.stopOnFailure {
 				return allErrors
 			}
 		}
@@ -105,7 +107,5 @@ func DeleteObjects(args ...ObjectOrOption) []error {
 		}
 	}
 
-	objects, options := separateAndApply(args)
-
-	return deleteObjects(objects, session, options)
+	return deleteObjects(args, session)
 }
