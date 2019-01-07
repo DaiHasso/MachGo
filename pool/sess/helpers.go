@@ -223,3 +223,16 @@ func separateArgs(args []ObjectOrOption) ([]base.Base, []actionOption) {
 
 	return objects, options
 }
+
+
+func separateAndApply(args []ObjectOrOption) ([]base.Base, *actionOptions) {
+	objects, options := separateArgs(args)
+
+	optionSet := new(actionOptions)
+
+	for _, option := range options {
+		option(optionSet)
+	}
+
+	return objects, optionSet
+}
