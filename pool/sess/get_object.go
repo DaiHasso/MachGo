@@ -79,6 +79,8 @@ func getObject(
 	return nil
 }
 
+// GetObject gets the object with the provided id from the DB using a new
+// session from the global connection pool.
 func GetObject(object base.Base, idValue interface{}) error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {

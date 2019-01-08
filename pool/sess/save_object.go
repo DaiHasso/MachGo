@@ -257,6 +257,8 @@ func doInsertion(
 	)
 }
 
+// SaveObject saves the given object to the DB new session from the global
+// connection pool.
 func SaveObject(object base.Base) error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {
@@ -268,6 +270,8 @@ func SaveObject(object base.Base) error {
 	return saveObject(object, session)
 }
 
+// SaveObjects saves the provided objects to the DB using a new session from
+// the global connection pool.
 func SaveObjects(args ...ObjectOrOption) []error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {

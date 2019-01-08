@@ -66,6 +66,8 @@ func updateObject(object base.Base, session *Session) error {
 	return nil
 }
 
+// UpdateObject updates the object provided in the DB using a new session from
+// the global connection pool.
 func UpdateObject(object base.Base) error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {

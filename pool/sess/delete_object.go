@@ -86,6 +86,8 @@ func deleteObjects(
 	return allErrors
 }
 
+// DeleteObject deletes the object provided from the DB using a new session
+// from the global connection pool.
 func DeleteObject(object base.Base) error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {
@@ -97,6 +99,8 @@ func DeleteObject(object base.Base) error {
 	return deleteObject(object, session)
 }
 
+// DeleteObjects deletes the objects provided from the DB using a new session
+// from the global connection pool.
 func DeleteObjects(args ...ObjectOrOption) []error {
 	session, err := NewSessionFromGlobal()
 	if err != nil {
