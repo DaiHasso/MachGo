@@ -22,9 +22,6 @@ var _ = Describe("Manager", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 
-			// This will help us parallelize.
-			mock.MatchExpectationsInOrder(false)
-
 			dbx = sqlx.NewDb(db, "mockdb")
 			connPool := pool.ConnectionPool{
 				DB: *dbx,
@@ -62,6 +59,9 @@ var _ = Describe("Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(manager).NotTo(BeNil())
 		})
+        AfterEach(func() {
+            db.Close()
+        })
 
 		Context("When retrieving a single object by ID", func() {
 			expectedQuery := `SELECT \* FROM fake_objects WHERE id=\?`
@@ -114,7 +114,7 @@ var _ = Describe("Manager", func() {
 
 			It("Should find an object by its name and email", func() {
 				expectedQuery := `SELECT \* FROM fake_complicated_objects ` +
-					`WHERE name = \? AND email = \?`
+					`WHERE \S+ = \? AND \S+ = \?`
 				expectedAddress :=  "777 foobar ave."
 				expectedRows := sqlmock.NewRows(
 					[]string{"id", "name", "email", "address"},
@@ -239,7 +239,7 @@ var _ = Describe("Manager", func() {
 			It("Should work when a composite object has both fields filled",
 				func() {
 				expectedQuery := `SELECT \* FROM fake_composite_objects ` +
-					`WHERE name=\? AND email=\?`
+					`WHERE [^=]+=\? AND [^=]+=\?`
 				expectedRows := sqlmock.NewRows(
 					[]string{"name", "email", "address"},
 				).AddRow(
