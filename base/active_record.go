@@ -54,6 +54,8 @@ func (self ActiveRecord) LinkInstance(ref Base) {
 	self.instanceRef = ref
 }
 
+type ObjectActiveRecordLinker func(object Base) error
+
 // FIXME: Better name pl0x.
 func typeBase(arType reflect.Type) ObjectActiveRecordLinker {
 	return func(object Base) error {
@@ -98,8 +100,6 @@ func typeBase(arType reflect.Type) ObjectActiveRecordLinker {
 		return nil
 	}
 }
-
-type ObjectActiveRecordLinker func(object Base) error
 
 var LinkActiveRecord = typeBase(reflect.TypeOf((*ActiveRecord)(nil)).Elem())
 
