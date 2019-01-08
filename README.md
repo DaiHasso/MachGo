@@ -29,62 +29,57 @@ import (
 )
 
 type Image struct {
-	database.DefaultDBObject
+  PostID int64 `db:"post_id"`
 
-	PostID int64 `db:"post_id"`
-
-	MimeType string `db:"mime_type"`
-	OriginalFileName string `db:"file_name"`
-}
-
-func (self *Image) GetTableName() string {
-	return "images"
+  MimeType string `db:"mime_type"`
+  OriginalFileName string `db:"file_name"`
 }
 ```
-
-The use of `DefaultDBObject` from the database pacakge adds some default
-behaviour as well as auto generating and managing an ID property for the object.
-The auto-generated/managed ID field can be accessed like `objectInstance.ID`.
 
 Next you might want to create a database connection:
 ``` go
 import (
-    "github.com/daihasso/machgo/database"
+    "sync"
+
+    "github.com/daihasso/machgo/pool"
+    "github.com/daihasso/machgo/pool/config"
 )
 
-var MyDB *database.manager
+var MyDBConn *pool.ConnectionPool
 
 func init() {
-    MyDB, err := database.GetDatabaseManager(
-        database.Postgres, "mypostgresuser", "mysecretpassword", "localhost",
-        5432, "mycooldatabase",
-    )
-    if err != nil {
-        panic(err)
-    }
+    once.Do(func() {
+        MyDBConn, err := config.PostgresPool(
+            config.Username("mypostgresuser"),
+            config.Password("mysecretpassword"),
+            config.Host("localhost"),
+            config.Port(5432),
+            config.DatabaseName("mycooldatabase"),
+        )
+        if err != nil {
+            panic(err)
+        }
+
+        // This lets us share a connection across further MachGo calls.
+        SetGlobalConnectionPool(MyDBConn)
+    })
 }
 ```
 
 And to retrieve single image you might do:
 ``` go
 
+import(
+    "github.com/daihasso/machgo/pool/ses"
+)
+
 func getImage(id int64) *Image {
-    result := &Image{}
-    err := MyDB.GetObject(result, id)
+    session, err := sess.NewSession()
     if err != nil {
         panic(err)
     }
-
-    return result
-}
-```
-
-And to retrieve all images you might do:
-``` go
-
-func getImages() *[]*Image {
     result := &Image{}
-    err := MyDb.FindObjects(result)
+    err := session.GetObject(result, id)
     if err != nil {
         panic(err)
     }
@@ -168,18 +163,34 @@ All the same actions as above will still work the same but in order to get
 images for a post (or set of posts).
 ``` go
 import (
-	"github.com/DaiHasso/MachGo/session"
-	. "github.com/DaiHasso/MachGo/dsl/dot"
+  "github.com/DaiHasso/MachGo/pool/session"
+  . "github.com/DaiHasso/MachGo/dsl/dot"
 )
 
 func findImagesForPost(postIDs []string) {
     image := &Image{}
     postImage := &PostImage{}
 
-    sess := session.New()
-    qs := sess.Query(postImage, image).SelectObject(image).Where(
+    session, err := sess.NewSession()
+    if err != nil {
+        panic(err)
+    }
+    qs := session.Query(postImage, image).SelectObject(image).Where(
         Eq(ObjectColumn(postImage, "image_id"), ObjectColumn(image, "id")),
         In(ObjectColumn(postImage, "post_id"), Const(postIDs...)),
     )
+
+    results, err := qs.Results()
+    if err != nil {
+        panic(err)
+    }
+
+    images := make([]*Image, 0)
+    err = results.WriteAllTo(&images)
+    if err != nil {
+      panic(err)
+    }
+
+    return images
 }
 ```
