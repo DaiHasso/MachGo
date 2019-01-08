@@ -125,29 +125,6 @@ func saveObject(object base.Base, session *Session) error {
 	return nil
 }
 
-func SaveObject(object base.Base) error {
-	session, err := NewSessionFromGlobal()
-	if err != nil {
-		return errors.Wrap(
-			err, "Couldn't get session from global connection pool",
-		)
-	}
-
-	return saveObject(object, session)
-}
-
-func SaveObjects(args ...ObjectOrOption) []error {
-	session, err := NewSessionFromGlobal()
-	if err != nil {
-		return []error{
-			errors.Wrap(
-				err, "Couldn't get session from global connection pool",
-			),
-		}
-	}
-	return saveObjects(args, session)
-}
-
 func insertActionWithPostInserter(
 	session *Session,
 	object base.Base,
@@ -278,4 +255,27 @@ func doInsertion(
 	return basicInsert(
 		session, object, statement, idColumn, insertValues,
 	)
+}
+
+func SaveObject(object base.Base) error {
+	session, err := NewSessionFromGlobal()
+	if err != nil {
+		return errors.Wrap(
+			err, "Couldn't get session from global connection pool",
+		)
+	}
+
+	return saveObject(object, session)
+}
+
+func SaveObjects(args ...ObjectOrOption) []error {
+	session, err := NewSessionFromGlobal()
+	if err != nil {
+		return []error{
+			errors.Wrap(
+				err, "Couldn't get session from global connection pool",
+			),
+		}
+	}
+	return saveObjects(args, session)
 }
