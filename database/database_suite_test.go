@@ -11,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
     sqlmock "github.com/DATA-DOG/go-sqlmock"
 
-	"MachGo"
+	"github.com/daihasso/machgo"
 )
 
 var (

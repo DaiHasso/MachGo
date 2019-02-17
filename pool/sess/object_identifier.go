@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"MachGo/base"
-	"MachGo/refl"
+	"github.com/daihasso/machgo/base"
+	"github.com/daihasso/machgo/refl"
 )
 
 type objectIdentifier struct {

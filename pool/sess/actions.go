@@ -1,7 +1,7 @@
 package sess
 
 import (
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 

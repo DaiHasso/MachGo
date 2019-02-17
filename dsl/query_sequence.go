@@ -11,10 +11,10 @@ import (
 	"github.com/jmoiron/sqlx"
 	logging "github.com/daihasso/slogging"
 
-	"MachGo"
-	"MachGo/database"
-	"MachGo/refl"
-	"MachGo/pool"
+	"github.com/daihasso/machgo"
+	"github.com/daihasso/machgo/database"
+	"github.com/daihasso/machgo/refl"
+	"github.com/daihasso/machgo/pool"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

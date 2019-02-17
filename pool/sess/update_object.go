@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/jmoiron/sqlx"
 
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 var updateObjectStatementTemplate = `UPDATE %s SET %s WHERE %s`

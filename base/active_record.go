@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"MachGo"
-	"MachGo/dsl"
+	"github.com/daihasso/machgo"
+	"github.com/daihasso/machgo/dsl"
 )
 
 type ActiveRecorder interface {

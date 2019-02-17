@@ -13,9 +13,9 @@ import (
     sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 
-    "MachGo/database/dbtype"
-    "MachGo/dsl"
-    "MachGo/pool"
+    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/dsl"
+    "github.com/daihasso/machgo/pool"
 )
 
 var _ = Describe("QuerySequence", func() {

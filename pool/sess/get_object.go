@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 var getObjectStatementTemplate = `SELECT * FROM %s WHERE %s`

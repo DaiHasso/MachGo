@@ -4,7 +4,7 @@ import (
     . "github.com/onsi/ginkgo"
     . "github.com/onsi/gomega"
 
-	. "MachGo/base"
+	. "github.com/daihasso/machgo/base"
 )
 
 type ARObjectTest struct {

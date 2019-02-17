@@ -7,8 +7,8 @@ import (
 
     . "github.com/onsi/ginkgo"
     t "github.com/onsi/gomega"
-    . "MachGo/dsl/dot"
-    "MachGo/dsl"
+    . "github.com/daihasso/machgo/dsl/dot"
+    "github.com/daihasso/machgo/dsl"
 )
 
 var _ = Describe("Conditions", func() {

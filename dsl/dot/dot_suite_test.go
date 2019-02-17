@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"MachGo"
+	"github.com/daihasso/machgo"
 )
 
 var object1, object2, object3, object4, object5 *testObject

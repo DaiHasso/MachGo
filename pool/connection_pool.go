@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"MachGo/database/dbtype"
+	"github.com/daihasso/machgo/database/dbtype"
 
 	"github.com/jmoiron/sqlx"
 )

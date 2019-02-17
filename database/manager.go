@@ -12,10 +12,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"MachGo/refl"
-	. "MachGo"
-	"MachGo/database/dbtype"
-	"MachGo/pool"
+	"github.com/daihasso/machgo/refl"
+	. "github.com/daihasso/machgo"
+	"github.com/daihasso/machgo/database/dbtype"
+	"github.com/daihasso/machgo/pool"
 	"github.com/pkg/errors"
 )
 

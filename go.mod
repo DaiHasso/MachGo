@@ -1,4 +1,4 @@
-module daihasso.com/github/daihasso
+module github.com/daihasso/machgo
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.0

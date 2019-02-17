@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	logging "github.com/daihasso/slogging"
 
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 type testObject struct {

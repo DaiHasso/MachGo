@@ -8,8 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
-	"MachGo/base"
-	"MachGo/database/dbtype"
+	"github.com/daihasso/machgo/base"
+	"github.com/daihasso/machgo/database/dbtype"
 )
 
 var saveObjectStatementTemplate = `INSERT INTO %s %s`

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
-	"MachGo/base"
-	"MachGo/refl"
+	"github.com/daihasso/machgo/base"
+	"github.com/daihasso/machgo/refl"
 )
 
 func objectIdColumn(object base.Base) string {

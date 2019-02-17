@@ -9,9 +9,9 @@ import (
     "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 
-    "MachGo/database/dbtype"
-    "MachGo/pool"
-    . "MachGo/pool/sess"
+    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool"
+    . "github.com/daihasso/machgo/pool/sess"
 )
 
 var _ = Describe("GetObject", func() {

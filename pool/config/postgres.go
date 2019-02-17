@@ -1,8 +1,8 @@
 package config
 
 import (
-	"MachGo/database"
-	"MachGo/pool"
+	"github.com/daihasso/machgo/database"
+	"github.com/daihasso/machgo/pool"
 
 	"fmt"
 	"math"

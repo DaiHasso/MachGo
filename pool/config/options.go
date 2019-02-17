@@ -1,7 +1,7 @@
 package config
 
 import (
-	"MachGo/database/dbtype"
+	"github.com/daihasso/machgo/database/dbtype"
 
 	"github.com/pkg/errors"
 )

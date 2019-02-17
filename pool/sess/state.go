@@ -6,7 +6,7 @@ import (
 	logging "github.com/daihasso/slogging"
 	"github.com/pkg/errors"
 
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 var once sync.Once

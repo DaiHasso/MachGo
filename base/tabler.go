@@ -1,7 +1,7 @@
 package base
 
 import (
-	"MachGo/refl"
+	"github.com/daihasso/machgo/refl"
 )
 
 type CustomTabler interface {

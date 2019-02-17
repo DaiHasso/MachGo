@@ -8,7 +8,7 @@ import (
     . "github.com/onsi/ginkgo"
     . "github.com/onsi/gomega"
 
-    . "MachGo/dsl"
+    . "github.com/daihasso/machgo/dsl"
 )
 
 var _ = Describe("Queryable", func() {

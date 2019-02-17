@@ -1,8 +1,8 @@
 package dsl_test
 
 import (
-	. "MachGo"
-	"MachGo/types"
+	. "github.com/daihasso/machgo"
+	"github.com/daihasso/machgo/types"
 )
 
 type testObject struct {

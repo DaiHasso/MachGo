@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/jmoiron/sqlx"
 
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 var deleteObjectStatementTemplate = `DELETE FROM %s WHERE %s`

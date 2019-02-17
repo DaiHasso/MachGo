@@ -8,10 +8,10 @@ import (
     sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 
-    "MachGo/database/dbtype"
-    "MachGo/pool"
-    . "MachGo/database"
-    "MachGo"
+    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool"
+    . "github.com/daihasso/machgo/database"
+    "github.com/daihasso/machgo"
 )
 
 var _ = Describe("Manager", func() {

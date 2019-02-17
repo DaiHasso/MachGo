@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"MachGo/refl"
+	"github.com/daihasso/machgo/refl"
 )
 
 

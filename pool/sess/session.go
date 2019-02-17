@@ -1,10 +1,10 @@
 package sess
 
 import (
-	"MachGo"
-	"MachGo/pool"
-	"MachGo/dsl"
-	"MachGo/database"
+	"github.com/daihasso/machgo"
+	"github.com/daihasso/machgo/pool"
+	"github.com/daihasso/machgo/dsl"
+	"github.com/daihasso/machgo/database"
 )
 
 // Session is a helper wrapper for a connection pool that has common helper

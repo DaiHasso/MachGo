@@ -3,7 +3,7 @@ package MachGo
 import (
 	"time"
 
-	"MachGo/types"
+	"github.com/daihasso/machgo/types"
 )
 
 // JSONExportedDefaultAttributes is a set of sensible default attributes that

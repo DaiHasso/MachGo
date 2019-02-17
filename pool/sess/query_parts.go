@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"MachGo/base"
+	"github.com/daihasso/machgo/base"
 )
 
 type QueryParts struct {

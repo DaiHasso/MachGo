@@ -2,8 +2,8 @@
 package dot
 
 import (
-	"MachGo"
-	"MachGo/dsl"
+	"github.com/daihasso/machgo"
+	"github.com/daihasso/machgo/dsl"
 )
 
 // Const will create a constant value for a where clause based on the value(s)
