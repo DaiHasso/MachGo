@@ -1,11 +1,11 @@
-# MachGo
-[![Build Status](https://travis-ci.com/DaiHasso/MachGo.svg?branch=master)](https://travis-ci.com/DaiHasso/MachGo)[![Coverage Status](https://coveralls.io/repos/github/DaiHasso/MachGo/badge.svg?branch=master)](https://coveralls.io/github/DaiHasso/MachGo?branch=master)
+# machgo
+[![Build Status](https://travis-ci.com//machgo.svg?branch=master)](https://travis-ci.com/daihasso/MachGo)[![Coverage Status](https://coveralls.io/repos/github/DaiHasso/MachGo/badge.svg?branch=master)](https://coveralls.io/github/DaiHasso/MachGo?branch=master)
 
-MachGo is a ORM-ish database library for go.
+machgo is a ORM-ish database library for go.
 
 Because I am chronically lazy, this readme is a WIP.
 
-Check out the [godocs!](https://godoc.org/github.com/DaiHasso/MachGo)
+Check out the [godocs!](https://godoc.org/github.com//machgo)
 
 ## Example Usage
 ### Simple usage
@@ -60,7 +60,7 @@ func init() {
             panic(err)
         }
 
-        // This lets us share a connection across further MachGo calls.
+        // This lets us share a connection across further machgo calls.
         SetGlobalConnectionPool(MyDBConn)
     })
 }
@@ -113,7 +113,7 @@ Then you might create the following object representation:
 ``` go
 // post_image.go
 type PostImage struct {
-    MachGo.DefaultCompositeDBObject
+    machgo.DefaultCompositeDBObject
 
     ID int64 `db:"post_id"`
     ImageID int64 `db:"image_id"`
@@ -133,7 +133,7 @@ func (s *PostImage) GetColumnNames() []string {
 type Image struct {
     database.DefaultDBObject
 
-    // Defining the db value as 'foreign' here lets the MachGo know that it
+    // Defining the db value as 'foreign' here lets the machgo know that it
     // needs to pull the column from the table specified in the dbforeign tag
     // value.
     PostID int64 `db:"post_id,foreign" dbforeign:"post_images"`
@@ -147,9 +147,9 @@ func (self *Image) GetTableName() string {
 }
 
 // This function defines what relationships with other tables or objects
-func (self *Image) Relationships() []MachGo.Relationship {
-    return []MachGo.Relationship{
-        MachGo.Relationship{
+func (self *Image) Relationships() []machgo.Relationship {
+    return []machgo.Relationship{
+        machgo.Relationship{
             SelfObject: self,
             SelfColumn:   "id",
             TargetObject: &ImagePost{},
@@ -163,8 +163,8 @@ All the same actions as above will still work the same but in order to get
 images for a post (or set of posts).
 ``` go
 import (
-  "github.com/DaiHasso/MachGo/pool/session"
-  . "github.com/DaiHasso/MachGo/dsl/dot"
+  "github.com//machgo/pool/session"
+  . "github.com//machgo/dsl/dot"
 )
 
 func findImagesForPost(postIDs []string) {
