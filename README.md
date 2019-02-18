@@ -1,5 +1,7 @@
 # machgo
-[![Build Status](https://travis-ci.com/daihasso/machgo.svg?branch=master)](https://travis-ci.com/daihasso/machgo)[![Coverage Status](https://coveralls.io/repos/github/daihasso/machgo/badge.svg?branch=master)](https://coveralls.io/github/daihasso/machgo?branch=master)
+[![Build Status](https://travis-ci.com/daihasso/machgo.svg?branch=master)](https://travis-ci.com/daihasso/machgo)
+[![Coverage Status](https://coveralls.io/repos/github/DaiHasso/MachGo/badge.svg?branch=master)](https://coveralls.io/github/DaiHasso/MachGo?branch=master)
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/daihasso/machgo)
 
 machgo is a ORM-ish database library for go.
 
