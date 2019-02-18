@@ -165,8 +165,8 @@ All the same actions as above will still work the same but in order to get
 images for a post (or set of posts).
 ``` go
 import (
-  "github.com//machgo/pool/session"
-  . "github.com//machgo/dsl/dot"
+  "github.com/daihasso/machgo/pool/session"
+  . "github.com/daihasso/machgo/dsl/dot"
 )
 
 func findImagesForPost(postIDs []string) {
