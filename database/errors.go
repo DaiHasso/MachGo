@@ -4,7 +4,7 @@ import (
 	"errors"
 	"regexp"
 
-	logging "github.com/daihasso/slogging"
+	"github.com/daihasso/slogging"
 )
 
 // ErrObjectNotSaved is an error that occurs when a object is attempted to be
@@ -29,9 +29,9 @@ var noResultsRegex = `.*: no rows in result set.*`
 func translateDBError(err error) error {
 	errorString := err.Error()
 
-	logging.Debug("Parsing error from DB.").
-		With("error_string", errorString).
-		Send()
+	logging.Debug("Parsing error from DB.", logging.Extras{
+		"error_string": errorString,
+    })
 
 	if matched, _ := regexp.Match(
 		duplicateEntryRegexMysql,

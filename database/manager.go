@@ -1,143 +1,143 @@
 package database
 
 import (
-	"database/sql"
-	"database/sql/driver"
-	"reflect"
-	"runtime"
-	"fmt"
-	"runtime/debug"
+    "database/sql"
+    "database/sql/driver"
+    "reflect"
+    "runtime"
+    "fmt"
+    "runtime/debug"
 
-	logging "github.com/daihasso/slogging"
+    "github.com/daihasso/slogging"
 
-	"github.com/jmoiron/sqlx"
+    "github.com/jmoiron/sqlx"
 
-	"github.com/daihasso/machgo/refl"
-	. "github.com/daihasso/machgo"
-	"github.com/daihasso/machgo/database/dbtype"
-	"github.com/daihasso/machgo/pool"
-	"github.com/pkg/errors"
+    "github.com/daihasso/machgo/refl"
+    . "github.com/daihasso/machgo"
+    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool"
+    "github.com/pkg/errors"
 )
 
 func initDiffable(obj Object) {
-	diffable, isDiffable := obj.(Diffable)
-	if !isDiffable {
-		return
-	}
-	nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
-	for name, tagValueInterface := range nameTagValueInterfaces {
-		diffable.SetLastSavedValue(name, tagValueInterface.Interface)
-	}
+    diffable, isDiffable := obj.(Diffable)
+    if !isDiffable {
+        return
+    }
+    nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
+    for name, tagValueInterface := range nameTagValueInterfaces {
+        diffable.SetLastSavedValue(name, tagValueInterface.Interface)
+    }
 }
 
 // Manager is a database wrapper with a few helpful tools
 // for working with objects.
 type Manager struct {
-	*sqlx.DB
+    *sqlx.DB
 
-	databaseType dbtype.Type
+    databaseType dbtype.Type
 }
 
 
 // GetObject gets an object by its ID.
 func (m *Manager) GetObject(obj Object, id ID) error {
-	queryTemplate := `SELECT * FROM %s WHERE id=?`
+    queryTemplate := `SELECT * FROM %s WHERE id=?`
 
-	query := fmt.Sprintf(
-		queryTemplate,
-		obj.GetTableName(),
-	)
+    query := fmt.Sprintf(
+        queryTemplate,
+        obj.GetTableName(),
+    )
 
-	query = m.Rebind(query)
+    query = m.Rebind(query)
 
-	logging.Debug("Find object.").
-		With("query", query).
-		With("id", id).
-		Send()
+    logging.Debug("Find object.", logging.Extras{
+        "query": query,
+        "id": id,
+    })
 
-	err := m.Get(obj, query, id)
-	if err != nil {
-		translatedError := translateDBError(err)
-		logging.Error("Failed to get object").
-			With("error_message", translatedError.Error()).
-			Send()
-		return translatedError
-	}
+    err := m.Get(obj, query, id)
+    if err != nil {
+        translatedError := translateDBError(err)
+        logging.Error("Failed to get object", logging.Extras{
+            "error_message": translatedError.Error(),
+        })
+        return translatedError
+    }
 
-	obj.SetSaved(true)
-	initDiffable(obj)
+    obj.SetSaved(true)
+    initDiffable(obj)
 
-	return err
+    return err
 }
 
 // FindObject finds an object by intelligently reading attributes of
 // provided object.
 func (m *Manager) FindObject(obj IDObject) error {
-	queryTemplate := `SELECT * FROM %s %s`
+    queryTemplate := `SELECT * FROM %s %s`
 
-	nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
+    nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
-	var whereClause []byte
-	var variableValues []interface{}
+    var whereClause []byte
+    var variableValues []interface{}
 
-	if obj.IDIsSet() {
-		if len(whereClause) != 0 {
-			whereClause = append(whereClause, []byte(" AND ")...)
-		} else {
-			whereClause = append(whereClause, []byte("WHERE ")...)
-		}
-		whereClause = append(whereClause, []byte("id = ?")...)
-		variableValues = append(
-			variableValues,
-			obj.GetID(),
-		)
-	} else {
-		for _, tagValueInterface := range nameTagValueInterfaces {
-			if tagValueInterface.IsUnset() {
-				continue
-			}
+    if obj.IDIsSet() {
+        if len(whereClause) != 0 {
+            whereClause = append(whereClause, []byte(" AND ")...)
+        } else {
+            whereClause = append(whereClause, []byte("WHERE ")...)
+        }
+        whereClause = append(whereClause, []byte("id = ?")...)
+        variableValues = append(
+            variableValues,
+            obj.GetID(),
+        )
+    } else {
+        for _, tagValueInterface := range nameTagValueInterfaces {
+            if tagValueInterface.IsUnset() {
+                continue
+            }
 
-			if len(whereClause) != 0 {
-				whereClause = append(whereClause, []byte(" AND ")...)
-			} else {
-				whereClause = append(whereClause, []byte("WHERE ")...)
-			}
+            if len(whereClause) != 0 {
+                whereClause = append(whereClause, []byte(" AND ")...)
+            } else {
+                whereClause = append(whereClause, []byte("WHERE ")...)
+            }
 
-			variableNameSQL := []byte(tagValueInterface.TagValue)
-			whereClause = append(whereClause, variableNameSQL...)
-			whereClause = append(whereClause, []byte(" = ?")...)
-			variableValues = append(
-				variableValues,
-				tagValueInterface.Interface,
-			)
-		}
-	}
+            variableNameSQL := []byte(tagValueInterface.TagValue)
+            whereClause = append(whereClause, variableNameSQL...)
+            whereClause = append(whereClause, []byte(" = ?")...)
+            variableValues = append(
+                variableValues,
+                tagValueInterface.Interface,
+            )
+        }
+    }
 
-	query := fmt.Sprintf(
-		queryTemplate,
-		obj.GetTableName(),
-		string(whereClause),
-	)
+    query := fmt.Sprintf(
+        queryTemplate,
+        obj.GetTableName(),
+        string(whereClause),
+    )
 
-	query = m.Rebind(query)
+    query = m.Rebind(query)
 
-	logging.Debug("Find object.").
-		With("query", query).
-		With("values", variableValues).
-		Send()
+    logging.Debug("Find object.", logging.Extras{
+        "query": query,
+        "values": variableValues,
+    })
 
-	err := m.Get(obj, query, variableValues...)
-	if err != nil {
-		translatedError := translateDBError(err)
-		logging.Error("Failed to find object.").
-			With("error_message", translatedError.Error()).
-			Send()
-		return translatedError
-	}
+    err := m.Get(obj, query, variableValues...)
+    if err != nil {
+        translatedError := translateDBError(err)
+        logging.Error("Failed to find object.", logging.Extras{
+            "error_message": translatedError.Error(),
+        })
+        return translatedError
+    }
 
-	obj.SetSaved(true)
+    obj.SetSaved(true)
 
-	return err
+    return err
 }
 
 // FindObjects will find all objects matching queryObject parameter and return
@@ -145,365 +145,367 @@ func (m *Manager) FindObject(obj IDObject) error {
 // the queryObject with the values found.
 // Ex: queryObject is a Post then the return value will be a *[]*Post.
 func (m *Manager) FindObjects(
-	queryObject Object,
+    queryObject Object,
 ) (interface{}, error) {
-	queryTemplate := `SELECT * FROM %s %s`
-	whereTemplate := `WHERE %s`
+    queryTemplate := `SELECT * FROM %s %s`
+    whereTemplate := `WHERE %s`
 
-	nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(
-		queryObject,
-		"db",
-	)
+    nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(
+        queryObject,
+        "db",
+    )
 
-	var whereClause string
-	var whereValues []interface{}
-	if result, ok := queryObject.(IDObject); ok {
-		newWhereClause, newWhereValues := buildIDWhereClause(
-			nameTagValueInterfaces,
-			result.GetID(),
-		)
-		whereClause = string(newWhereClause)
-		whereValues = append(whereValues, newWhereValues...)
-	} else if result, ok := queryObject.(CompositeObject); ok {
-		for _, tagValueInterface := range nameTagValueInterfaces {
-			newWhereValues, newWhereClause, err := buildCompositeWhereClause(
-				result,
-				tagValueInterface,
-				whereClause,
-				false,
-			)
-			if err != nil {
-				return nil, err
-			}
-			whereClause = newWhereClause
-			whereValues = append(whereValues, newWhereValues...)
-		}
-		whereClause = fmt.Sprintf(whereTemplate, whereClause)
-	} else {
-		return nil, errors.New(
-			"provided object is neither an IDObject nor a " +
-				"CompositeObject, I don't know how to handle this.",
-		)
-	}
+    var whereClause string
+    var whereValues []interface{}
+    if result, ok := queryObject.(IDObject); ok {
+        newWhereClause, newWhereValues := buildIDWhereClause(
+            nameTagValueInterfaces,
+            result.GetID(),
+        )
+        whereClause = string(newWhereClause)
+        whereValues = append(whereValues, newWhereValues...)
+    } else if result, ok := queryObject.(CompositeObject); ok {
+        for _, tagValueInterface := range nameTagValueInterfaces {
+            newWhereValues, newWhereClause, err := buildCompositeWhereClause(
+                result,
+                tagValueInterface,
+                whereClause,
+                false,
+            )
+            if err != nil {
+                return nil, err
+            }
+            whereClause = newWhereClause
+            whereValues = append(whereValues, newWhereValues...)
+        }
+        whereClause = fmt.Sprintf(whereTemplate, whereClause)
+    } else {
+        return nil, errors.New(
+            "provided object is neither an IDObject nor a " +
+                "CompositeObject, I don't know how to handle this.",
+        )
+    }
 
-	query := fmt.Sprintf(
-		queryTemplate,
-		queryObject.GetTableName(),
-		whereClause,
-	)
+    query := fmt.Sprintf(
+        queryTemplate,
+        queryObject.GetTableName(),
+        whereClause,
+    )
 
-	query = m.Rebind(query)
+    query = m.Rebind(query)
 
-	logging.Debug("Find objects.").
-		With("query_object", queryObject).
-		With("query", query).
-		With("values", whereValues).
-		Send()
+    logging.Debug("Find objects.", logging.Extras{
+        "query_object": queryObject,
+        "query": query,
+        "values": whereValues,
+    })
 
-	iface := refl.GetInterfaceSlice(queryObject)
+    iface := refl.GetInterfaceSlice(queryObject)
 
-	err := m.Select(iface, query, whereValues...)
-	if err != nil {
-		logging.Warn("Could not perform select for FindObjects.").
-			With("error", err).
-			Send()
-		return nil, err
-	}
+    err := m.Select(iface, query, whereValues...)
+    if err != nil {
+        logging.Warn(
+            "Could not perform select for FindObjects.",
+            logging.Extras{
+                "error": err,
+            },
+        )
+        return nil, err
+    }
 
-	logging.Debug("Finished query.").
-		With("results", fmt.Sprintf("%#v", iface)).
-		Send()
+    logging.Debug("Finished query.", logging.Extras{
+        "results": fmt.Sprintf("%#v", iface),
+    })
 
-	return iface, nil
+    return iface, nil
 }
 
 // SaveObject automatically saves an object to the database.
 // TODO: Consider converting resolved name into snake case and using as
 //       database table if database table unset.
 func (m *Manager) SaveObject(obj Object) error {
-	if obj.IsSaved() {
-		return m.UpdateObject(obj)
-	}
+    if obj.IsSaved() {
+        return m.UpdateObject(obj)
+    }
 
-	action := func(obj Object, tx *sqlx.Tx) error {
-		err := obj.PreInsertActions()
-		if err != nil {
-			return err
-		}
-		queryTemplate := `INSERT INTO %s (%s) VALUES (%s)`
+    action := func(obj Object, tx *sqlx.Tx) error {
+        err := obj.PreInsertActions()
+        if err != nil {
+            return err
+        }
+        queryTemplate := `INSERT INTO %s (%s) VALUES (%s)`
 
-		nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
+        nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
-		var variableNames, variableBindVars []byte
-		var variableValues []interface{}
-		var needsIDFromDB = false
+        var variableNames, variableBindVars []byte
+        var variableValues []interface{}
+        var needsIDFromDB = false
 
-		if idObj, ok := obj.(IDObject); ok {
-			idColumn, idValue := buildInitID(idObj)
+        if idObj, ok := obj.(IDObject); ok {
+            idColumn, idValue := buildInitID(idObj)
 
-			if idValue == nil || reflect.ValueOf(idValue).IsNil() {
-				// FIXME: This whole bit is rather janky. I think ID handling
-				// needs to be done much better.
-				needsIDFromDB = true
-			} else {
-				variableNames = append(variableNames, []byte(idColumn)...)
-				variableBindVars = append(variableBindVars, '?')
-				variableValues = append(variableValues, idValue)
-			}
-		}
+            if idValue == nil || reflect.ValueOf(idValue).IsNil() {
+                // FIXME: This whole bit is rather janky. I think ID handling
+                // needs to be done much better.
+                needsIDFromDB = true
+            } else {
+                variableNames = append(variableNames, []byte(idColumn)...)
+                variableBindVars = append(variableBindVars, '?')
+                variableValues = append(variableValues, idValue)
+            }
+        }
 
-		for name, tagValueInterface := range nameTagValueInterfaces {
-			if len(variableNames) != 0 {
-				variableNames = append(variableNames, []byte{',', ' '}...)
-				variableBindVars = append(
-					variableBindVars,
-					[]byte{',', ' '}...,
-				)
-			}
+        for name, tagValueInterface := range nameTagValueInterfaces {
+            if len(variableNames) != 0 {
+                variableNames = append(variableNames, []byte{',', ' '}...)
+                variableBindVars = append(
+                    variableBindVars,
+                    []byte{',', ' '}...,
+                )
+            }
 
-			variableNameSQL := []byte(tagValueInterface.TagValue)
-			variableNames = append(variableNames, variableNameSQL...)
-			variableBindVars = append(variableBindVars, '?')
-			variableValues = append(
-				variableValues,
-				tagValueInterface.Interface,
-			)
-			if diffable, ok := obj.(Diffable); ok {
-				diffable.SetLastSavedValue(name, tagValueInterface.Interface)
-			}
-		}
+            variableNameSQL := []byte(tagValueInterface.TagValue)
+            variableNames = append(variableNames, variableNameSQL...)
+            variableBindVars = append(variableBindVars, '?')
+            variableValues = append(
+                variableValues,
+                tagValueInterface.Interface,
+            )
+            if diffable, ok := obj.(Diffable); ok {
+                diffable.SetLastSavedValue(name, tagValueInterface.Interface)
+            }
+        }
 
-		query := fmt.Sprintf(
-			queryTemplate,
-			obj.GetTableName(),
-			string(variableNames),
-			string(variableBindVars),
-		)
+        query := fmt.Sprintf(
+            queryTemplate,
+            obj.GetTableName(),
+            string(variableNames),
+            string(variableBindVars),
+        )
 
-		query = m.Rebind(query)
+        query = m.Rebind(query)
 
-		logging.Debug("Running save object query.").
-			With("query", query).
-			With("object_type", refl.GetInterfaceName(obj)).
-			With("values", variableValues).
-			Send()
+        logging.Debug("Running save object query.", logging.Extras{
+            "query": query,
+            "object_type": refl.GetInterfaceName(obj),
+            "values": variableValues,
+        })
 
-		if needsIDFromDB {
-			if idObj, ok := obj.(IDObject); ok {
-				err = insertAndSetID(
-					idObj,
-					query,
-					variableValues,
-					tx,
-					m.databaseType,
-				)
-			}
-		} else {
-			_, err = tx.Exec(query, variableValues...)
-		}
-		if err != nil {
-			return err
-		}
+        if needsIDFromDB {
+            if idObj, ok := obj.(IDObject); ok {
+                err = insertAndSetID(
+                    idObj,
+                    query,
+                    variableValues,
+                    tx,
+                    m.databaseType,
+                )
+            }
+        } else {
+            _, err = tx.Exec(query, variableValues...)
+        }
+        if err != nil {
+            return err
+        }
 
-		obj.SetSaved(true)
+        obj.SetSaved(true)
 
-		return nil
-	}
+        return nil
+    }
 
-	err := m.objectTransaction(action, obj)
-	if err != nil {
-		return err
-	}
+    err := m.objectTransaction(action, obj)
+    if err != nil {
+        return err
+    }
 
-	err = obj.PostInsertActions()
+    err = obj.PostInsertActions()
 
-	return err
+    return err
 }
 
 // UpdateObject will take an object and write an appropriate update
 // statement to update it's values.
 func (m *Manager) UpdateObject(obj Object) error {
-	if !obj.IsSaved() {
-		return ErrObjectNotSaved
-	}
+    if !obj.IsSaved() {
+        return ErrObjectNotSaved
+    }
 
-	action := func(obj Object, tx *sqlx.Tx) error {
-		queryTemplate := `UPDATE %s SET %s WHERE %s`
-		var whereClause string
-		var compositeObj CompositeObject
-		var variableSetStatements []byte
-		var variableValues []interface{}
-		var whereValues []interface{}
+    action := func(obj Object, tx *sqlx.Tx) error {
+        queryTemplate := `UPDATE %s SET %s WHERE %s`
+        var whereClause string
+        var compositeObj CompositeObject
+        var variableSetStatements []byte
+        var variableValues []interface{}
+        var whereValues []interface{}
 
-		if result, ok := obj.(IDObject); ok {
-			whereClause = "id=?"
-			whereValues = append(variableValues, result.GetID())
-		} else if result, ok := obj.(CompositeObject); ok {
-			compositeObj = result
-		} else {
-			panic(errors.New(
-				"provided object is neither an IDObject nor a " +
-					"CompositeObject, I don't know how to handle this.",
-			))
-		}
+        if result, ok := obj.(IDObject); ok {
+            whereClause = "id=?"
+            whereValues = append(variableValues, result.GetID())
+        } else if result, ok := obj.(CompositeObject); ok {
+            compositeObj = result
+        } else {
+            panic(errors.New(
+                "provided object is neither an IDObject nor a " +
+                    "CompositeObject, I don't know how to handle this.",
+            ))
+        }
 
-		err := obj.PreInsertActions()
-		if err != nil {
-			panic(err)
-		}
+        err := obj.PreInsertActions()
+        if err != nil {
+            panic(err)
+        }
 
-		nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
+        nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
-		diffable, isDiffable := obj.(Diffable)
+        diffable, isDiffable := obj.(Diffable)
 
-		for name, tagValueInterface := range nameTagValueInterfaces {
-			if isDiffable {
-				lastSavedValue := diffable.GetLastSavedValue(name)
-				if lastSavedValue == tagValueInterface.Interface {
-					continue
-				} else {
-					diffable.SetLastSavedValue(
-						name, tagValueInterface.Interface,
-					)
-				}
-			}
+        for name, tagValueInterface := range nameTagValueInterfaces {
+            if isDiffable {
+                lastSavedValue := diffable.GetLastSavedValue(name)
+                if lastSavedValue == tagValueInterface.Interface {
+                    continue
+                } else {
+                    diffable.SetLastSavedValue(
+                        name, tagValueInterface.Interface,
+                    )
+                }
+            }
 
-			if compositeObj != nil {
-				var (
-					newWhereValues []interface{}
-					newWhere string
-				)
-				newWhereValues, newWhere, err = buildCompositeWhereClause(
-					compositeObj,
-					tagValueInterface,
-					whereClause,
-					true,
-				)
-				if err != nil {
-					return err
-				}
-				whereClause = newWhere
-				whereValues = append(whereValues, newWhereValues...)
-			}
+            if compositeObj != nil {
+                var (
+                    newWhereValues []interface{}
+                    newWhere string
+                )
+                newWhereValues, newWhere, err = buildCompositeWhereClause(
+                    compositeObj,
+                    tagValueInterface,
+                    whereClause,
+                    true,
+                )
+                if err != nil {
+                    return err
+                }
+                whereClause = newWhere
+                whereValues = append(whereValues, newWhereValues...)
+            }
 
-			if len(variableSetStatements) != 0 {
-				variableSetStatements = append(
-					variableSetStatements, []byte{',', ' '}...,
-				)
-			}
+            if len(variableSetStatements) != 0 {
+                variableSetStatements = append(
+                    variableSetStatements, []byte{',', ' '}...,
+                )
+            }
 
-			variableSetSQL := []byte(
-				tagValueInterface.TagValue + "=?",
-			)
+            variableSetSQL := []byte(
+                tagValueInterface.TagValue + "=?",
+            )
 
-			variableSetStatements = append(
-				variableSetStatements,
-				variableSetSQL...,
-			)
+            variableSetStatements = append(
+                variableSetStatements,
+                variableSetSQL...,
+            )
 
-			variableValues = append(
-				variableValues,
-				tagValueInterface.Interface,
-			)
-		}
+            variableValues = append(
+                variableValues,
+                tagValueInterface.Interface,
+            )
+        }
 
-		if len(variableValues) == 0 {
-			logging.Debug(
-				"Skipping update because no data has changed.",
-			).Send()
-			return nil
-		}
+        if len(variableValues) == 0 {
+            logging.Debug("Skipping update because no data has changed.")
 
-		variableValues = append(
-			variableValues,
-			whereValues...,
-		)
+            return nil
+        }
 
-		query := fmt.Sprintf(
-			queryTemplate,
-			obj.GetTableName(),
-			string(variableSetStatements),
-			whereClause,
-		)
+        variableValues = append(
+            variableValues,
+            whereValues...,
+        )
 
-		query = m.Rebind(query)
+        query := fmt.Sprintf(
+            queryTemplate,
+            obj.GetTableName(),
+            string(variableSetStatements),
+            whereClause,
+        )
 
-		logging.Debug("Updating object.").
-			With("query", query).
-			Send()
+        query = m.Rebind(query)
 
-		_, err = tx.Exec(query, variableValues...)
-		if err != nil {
-			return translateDBError(err)
-		}
+        logging.Debug("Updating object.", logging.Extras{
+            "query": query,
+        })
 
-		return nil
-	}
+        _, err = tx.Exec(query, variableValues...)
+        if err != nil {
+            return translateDBError(err)
+        }
 
-	return m.objectTransaction(action, obj)
+        return nil
+    }
+
+    return m.objectTransaction(action, obj)
 }
 
 // DeleteObject will delete an object.
 func (m *Manager) DeleteObject(obj Object) error {
-	action := func(obj Object, tx *sqlx.Tx) error {
-		queryTemplate := "DELETE FROM %s %s"
-		var whereClause string
-		var whereValues []interface{}
+    action := func(obj Object, tx *sqlx.Tx) error {
+        queryTemplate := "DELETE FROM %s %s"
+        var whereClause string
+        var whereValues []interface{}
 
-		nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
+        nameTagValueInterfaces := refl.GetFieldsByTagWithTagValues(obj, "db")
 
-		if result, ok := obj.(IDObject); ok {
-			newWhereClause, newWhereValues := buildIDWhereClause(
-				nameTagValueInterfaces,
-				result.GetID(),
-			)
-			whereClause = string(newWhereClause)
-			whereValues = append(whereValues, newWhereValues...)
-		} else if result, ok := obj.(CompositeObject); ok {
-			for _, tagValueInterface := range nameTagValueInterfaces {
-				newWhereValues, newWhere, err := buildCompositeWhereClause(
-					result,
-					tagValueInterface,
-					whereClause,
-					true,
-				)
-				if err != nil {
-					return err
-				}
-				whereClause = newWhere
-				whereValues = append(whereValues, newWhereValues...)
-			}
+        if result, ok := obj.(IDObject); ok {
+            newWhereClause, newWhereValues := buildIDWhereClause(
+                nameTagValueInterfaces,
+                result.GetID(),
+            )
+            whereClause = string(newWhereClause)
+            whereValues = append(whereValues, newWhereValues...)
+        } else if result, ok := obj.(CompositeObject); ok {
+            for _, tagValueInterface := range nameTagValueInterfaces {
+                newWhereValues, newWhere, err := buildCompositeWhereClause(
+                    result,
+                    tagValueInterface,
+                    whereClause,
+                    true,
+                )
+                if err != nil {
+                    return err
+                }
+                whereClause = newWhere
+                whereValues = append(whereValues, newWhereValues...)
+            }
 
-			// #nosec G201
-			whereClause = fmt.Sprintf("WHERE %s", whereClause)
-		} else {
-			panic(errors.New(
-				"provided object is neither an IDObject nor a " +
-					"CompositeObject, I don't know how to handle this.",
-			))
-		}
+            // #nosec G201
+            whereClause = fmt.Sprintf("WHERE %s", whereClause)
+        } else {
+            panic(errors.New(
+                "provided object is neither an IDObject nor a " +
+                    "CompositeObject, I don't know how to handle this.",
+            ))
+        }
 
-		query := fmt.Sprintf(
-			queryTemplate,
-			obj.GetTableName(),
-			whereClause,
-		)
+        query := fmt.Sprintf(
+            queryTemplate,
+            obj.GetTableName(),
+            whereClause,
+        )
 
-		query = m.Rebind(query)
+        query = m.Rebind(query)
 
-		logging.Debug("Making delete query.").
-			With("query", query).
-			Send()
+        logging.Debug("Making delete query.", logging.Extras{
+            "query": query,
+        })
 
-		_, err := tx.Exec(query, whereValues...)
-		if err != nil {
-			return translateDBError(err)
-		}
+        _, err := tx.Exec(query, whereValues...)
+        if err != nil {
+            return translateDBError(err)
+        }
 
-		return nil
-	}
+        return nil
+    }
 
-	return m.objectTransaction(action, obj)
+    return m.objectTransaction(action, obj)
 }
 
 // CreateTableForObject tries to create a table for an object if it doesn't
@@ -511,322 +513,323 @@ func (m *Manager) DeleteObject(obj Object) error {
 // type reflection what type of column to create.
 // TODO: Handle non-mysql databases.
 func (m *Manager) CreateTableForObject(obj Object) error {
-	// TODO: Actually do something.
+    // TODO: Actually do something.
 
-	return nil
+    return nil
 }
 
 // TODO: Is this really necessary?
 func (m *Manager) objectTransaction(
-	fn func(Object, *sqlx.Tx) error,
-	obj Object,
+    fn func(Object, *sqlx.Tx) error,
+    obj Object,
 ) error {
-	wrapped := func(tx *sqlx.Tx) error {
-		return fn(obj, tx)
-	}
+    wrapped := func(tx *sqlx.Tx) error {
+        return fn(obj, tx)
+    }
 
-	return m.Transactionized(wrapped)
+    return m.Transactionized(wrapped)
 }
 
 // Transactionized wraps the provided function in a transaction that
 // automatically translates errors and rolls back any transactions in case of
 // failure.
 func (m *Manager) Transactionized(
-	fn func(*sqlx.Tx) error,
+    fn func(*sqlx.Tx) error,
 ) (err error) {
-	var tx *sqlx.Tx
+    var tx *sqlx.Tx
 
-	rollBack := func(tx *sqlx.Tx, oldError error) error {
-		if tx != nil {
-			newErr := tx.Rollback()
-			if newErr != nil {
-				logging.Error("Failed to rollback transaction.").
-					With("rollback_error", newErr.Error()).
-					With("initial_error", oldError.Error()).
-					Send()
-				return errors.Wrap(oldError, newErr.Error())
-			}
-		}
+    rollBack := func(tx *sqlx.Tx, oldError error) error {
+        if tx != nil {
+            newErr := tx.Rollback()
+            if newErr != nil {
+                logging.Error(
+                    "Failed to rollback transaction.",
+                    logging.Extras{
+                        "rollback_error": newErr.Error(),
+                        "initial_error": oldError.Error(),
+                    },
+                )
+                return errors.Wrap(oldError, newErr.Error())
+            }
+        }
 
-		return oldError
-	}
+        return oldError
+    }
 
-	// Recover if something crazy happens.
-	defer func() {
-		if r := recover(); r != nil {
-			if runtimeErr, ok := r.(runtime.Error); ok {
-				panic(runtimeErr)
-			}
+    // Recover if something crazy happens.
+    defer func() {
+        if r := recover(); r != nil {
+            if runtimeErr, ok := r.(runtime.Error); ok {
+                panic(runtimeErr)
+            }
 
-			stack := debug.Stack()
-			panicErr := fmt.Errorf(
-				"Panic while making db transaction: %+v\n%s",
-				r,
-				stack,
-			)
-			err = translateDBError(rollBack(tx, panicErr))
-		}
-	}()
+            stack := debug.Stack()
+            panicErr := fmt.Errorf(
+                "Panic while making db transaction: %+v\n%s",
+                r,
+                stack,
+            )
+            err = translateDBError(rollBack(tx, panicErr))
+        }
+    }()
 
-	tx, err = m.Beginx()
-	if err != nil {
-		logging.Error("Error beginning transaction.").
-			With("error", fmt.Sprint(err)).
-			Send()
-		return translateDBError(rollBack(tx, err))
-	}
+    tx, err = m.Beginx()
+    if err != nil {
+        logging.Error("Error beginning transaction.", logging.Extras{
+            "error": fmt.Sprint(err),
+        })
+        return translateDBError(rollBack(tx, err))
+    }
 
-	err = fn(tx)
-	if err != nil {
-		logging.Error("Error running transaction.").
-			With("error", fmt.Sprint(err)).
-			Send()
-		return translateDBError(rollBack(tx, err))
-	}
+    err = fn(tx)
+    if err != nil {
+        logging.Error("Error running transaction.", logging.Extras{
+            "error": fmt.Sprint(err),
+        })
+        return translateDBError(rollBack(tx, err))
+    }
 
-	err = tx.Commit()
-	return
+    err = tx.Commit()
+    return
 }
 
 // GetDatabaseManager will init and retrieve a mysql database.
 func GetDatabaseManager(
-	databaseType dbtype.Type,
-	username,
-	password,
-	serverAddress,
-	port,
-	dbName string,
+    databaseType dbtype.Type,
+    username,
+    password,
+    serverAddress,
+    port,
+    dbName string,
 ) (*Manager, error) {
-	var err error
-	var db *sqlx.DB
+    var err error
+    var db *sqlx.DB
 
-	switch databaseType {
-	case dbtype.Mysql:
-		db, err = getMysqlDatabase(
-			username,
-			password,
-			serverAddress,
-			port,
-			dbName,
-		)
-	case dbtype.Postgres:
-		db, err = getPostgresDatabase(
-			username,
-			password,
-			serverAddress,
-			port,
-			dbName,
-		)
-	default:
-		logging.Error("Unsupported database type.").
-			With("database_type", databaseType).
-			Send()
-		err = errors.New("Unsupported database type")
-	}
-	if err != nil {
-		return nil, err
-	}
+    switch databaseType {
+    case dbtype.Mysql:
+        db, err = getMysqlDatabase(
+            username,
+            password,
+            serverAddress,
+            port,
+            dbName,
+        )
+    case dbtype.Postgres:
+        db, err = getPostgresDatabase(
+            username,
+            password,
+            serverAddress,
+            port,
+            dbName,
+        )
+    default:
+        logging.Error("Unsupported database type.", logging.Extras{
+            "database_type": databaseType,
+        })
+        err = errors.New("Unsupported database type")
+    }
+    if err != nil {
+        return nil, err
+    }
 
-	manager := &Manager{db, databaseType}
+    manager := &Manager{db, databaseType}
 
-	return manager, nil
+    return manager, nil
 }
 
 // NewManagerFromExisting will create a new Manager from an existing database.
 func NewManagerFromExisting(
-	databaseType dbtype.Type,
-	existing *sql.DB,
-	databaseName string,
+    databaseType dbtype.Type,
+    existing *sql.DB,
+    databaseName string,
 ) (*Manager, error) {
-	sqlxDB := sqlx.NewDb(existing, databaseName)
-	manager := &Manager{sqlxDB, databaseType}
+    sqlxDB := sqlx.NewDb(existing, databaseName)
+    manager := &Manager{sqlxDB, databaseType}
 
-	return manager, nil
+    return manager, nil
 }
 
 func NewManager() (*Manager, error) {
-	connectionPool, err := pool.GlobalConnectionPool()
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error grabbing global ConnectionPool")
-	}
-	
-	manager := &Manager{
-		// TODO: Should just use a pool directly.
-		DB: &connectionPool.DB,
-		databaseType: connectionPool.Type,
-	}
+    connectionPool, err := pool.GlobalConnectionPool()
+    if err != nil {
+        return nil, errors.Wrapf(err, "Error grabbing global ConnectionPool")
+    }
 
-	return manager, nil
+    manager := &Manager{
+        // TODO: Should just use a pool directly.
+        DB: &connectionPool.DB,
+        databaseType: connectionPool.Type,
+    }
+
+    return manager, nil
 }
 
 func NewManagerFromPool(connPool *pool.ConnectionPool) (*Manager, error) {
-	// TODO: Should just use a pool directly.
-	manager := &Manager{
-		DB: &connPool.DB,
-		databaseType: connPool.Type,
-	}
+    // TODO: Should just use a pool directly.
+    manager := &Manager{
+        DB: &connPool.DB,
+        databaseType: connPool.Type,
+    }
 
-	return manager, nil
+    return manager, nil
 }
 
 func insertAndSetID(
-	obj IDObject,
-	query string,
-	variableValues []interface{},
-	tx *sqlx.Tx,
-	databaseType dbtype.Type,
+    obj IDObject,
+    query string,
+    variableValues []interface{},
+    tx *sqlx.Tx,
+    databaseType dbtype.Type,
 ) error {
-	switch databaseType {
-	case dbtype.Mysql:
-		result, err := tx.Exec(query, variableValues...)
-		if err != nil {
-			logging.Error("Couldn't exec query.").
-				With("error", err).
-				Send()
-			return err
-		}
+    switch databaseType {
+    case dbtype.Mysql:
+        result, err := tx.Exec(query, variableValues...)
+        if err != nil {
+            logging.Error("Couldn't exec query.", logging.Extras{
+                "error": err,
+            })
+            return err
+        }
 
-		id, err := result.LastInsertId()
-		if err != nil {
-			logging.Error("Couldn't get last insert ID.").
-				With("error", err).
-				Send()
-			return err
-		}
+        id, err := result.LastInsertId()
+        if err != nil {
+            logging.Error("Couldn't get last insert ID.", logging.Extras{
+                "error": err,
+            })
+            return err
+        }
 
-		intID := IntID{
-			ID: id,
-		}
+        intID := IntID{
+            ID: id,
+        }
 
-		err = obj.SetID(&intID)
-		if err != nil {
-			logging.Error("Error while trying to set ID.").
-				With("error", err).Send()
-		}
-	case dbtype.Postgres:
-		query = fmt.Sprintf("%s%s", query, " RETURNING id")
-		row := tx.QueryRowx(query, variableValues...)
+        err = obj.SetID(&intID)
+        if err != nil {
+            logging.Exception(err, "Error while trying to set ID.")
+        }
+    case dbtype.Postgres:
+        query = fmt.Sprintf("%s%s", query, " RETURNING id")
+        row := tx.QueryRowx(query, variableValues...)
 
-		err := row.StructScan(obj)
-		if err != nil {
-			logging.Error("Couldn't scan row into object.").
-				With("error", err).
-				Send()
-			return err
-		}
-	default:
-		return fmt.Errorf("Unsupported DB type %s", databaseType.String())
-	}
+        err := row.StructScan(obj)
+        if err != nil {
+            logging.Exception(err, "Couldn't scan row into object.")
+            return err
+        }
+    default:
+        return fmt.Errorf("Unsupported DB type %s", databaseType.String())
+    }
 
-	return nil
+    return nil
 }
 
 func buildIDWhereClause(
-	nameTagValueInterfaces map[string]refl.TagValueInterface,
-	id driver.Valuer,
+    nameTagValueInterfaces map[string]refl.TagValueInterface,
+    id driver.Valuer,
 ) ([]byte, []interface{}) {
-	var whereClause []byte
-	var variableValues []interface{}
+    var whereClause []byte
+    var variableValues []interface{}
 
-	var idValue driver.Value
-	var err error
-	if id != nil && !reflect.ValueOf(id).IsNil() {
-		// FIXME: This whole bit is rather janky. I think ID handling needs to
-		// be done much better.
-		idValue, err = id.Value()
-	}
-	if err == nil && idValue != nil {
-		if len(whereClause) != 0 {
-			whereClause = append(whereClause, []byte(" AND ")...)
-		} else {
-			whereClause = append(whereClause, []byte("WHERE ")...)
-		}
-		whereClause = append(whereClause, []byte("id = ?")...)
-		variableValues = append(
-			variableValues,
-			id,
-		)
-	} else {
-		for _, tagValueInterface := range nameTagValueInterfaces {
-			if tagValueInterface.IsUnset() {
-				continue
-			}
+    var idValue driver.Value
+    var err error
+    if id != nil && !reflect.ValueOf(id).IsNil() {
+        // FIXME: This whole bit is rather janky. I think ID handling needs to
+        // be done much better.
+        idValue, err = id.Value()
+    }
+    if err == nil && idValue != nil {
+        if len(whereClause) != 0 {
+            whereClause = append(whereClause, []byte(" AND ")...)
+        } else {
+            whereClause = append(whereClause, []byte("WHERE ")...)
+        }
+        whereClause = append(whereClause, []byte("id = ?")...)
+        variableValues = append(
+            variableValues,
+            id,
+        )
+    } else {
+        for _, tagValueInterface := range nameTagValueInterfaces {
+            if tagValueInterface.IsUnset() {
+                continue
+            }
 
-			if len(whereClause) != 0 {
-				whereClause = append(whereClause, []byte(" AND ")...)
-			} else {
-				whereClause = append(whereClause, []byte("WHERE ")...)
-			}
+            if len(whereClause) != 0 {
+                whereClause = append(whereClause, []byte(" AND ")...)
+            } else {
+                whereClause = append(whereClause, []byte("WHERE ")...)
+            }
 
-			variableNameSQL := []byte(tagValueInterface.TagValue)
-			whereClause = append(whereClause, variableNameSQL...)
-			whereClause = append(whereClause, []byte(" = ?")...)
-			variableValues = append(
-				variableValues,
-				tagValueInterface.Interface,
-			)
-		}
-	}
+            variableNameSQL := []byte(tagValueInterface.TagValue)
+            whereClause = append(whereClause, variableNameSQL...)
+            whereClause = append(whereClause, []byte(" = ?")...)
+            variableValues = append(
+                variableValues,
+                tagValueInterface.Interface,
+            )
+        }
+    }
 
-	return whereClause, variableValues
+    return whereClause, variableValues
 }
 
 func buildInitID(id IDAttribute) (string, ID) {
-	if !id.IDIsSet() {
-		newID := id.NewID()
-		err := id.SetID(newID)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return id.GetIDColumn(), id.GetID()
+    if !id.IDIsSet() {
+        newID := id.NewID()
+        err := id.SetID(newID)
+        if err != nil {
+            panic(err)
+        }
+    }
+    return id.GetIDColumn(), id.GetID()
 }
 
 func buildCompositeWhereClause(
-	compositeObj CompositeObject,
-	tagValueInterface refl.TagValueInterface,
-	existingWhereClause string,
-	strict bool,
+    compositeObj CompositeObject,
+    tagValueInterface refl.TagValueInterface,
+    existingWhereClause string,
+    strict bool,
 ) ([]interface{}, string, error) {
-	newVariableValues := make([]interface{}, 0)
-	newWhereClause := existingWhereClause
+    newVariableValues := make([]interface{}, 0)
+    newWhereClause := existingWhereClause
 
-	// TODO: Maybe columns should be a map?
-	for _, column := range compositeObj.GetColumnNames() {
-		if column == tagValueInterface.TagValue {
-			if tagValueInterface.IsUnset() {
-				if strict {
-					logging.Warn(
-						"A composite object was queried and required all "+
-							"columns to be filled but some columns were "+
-							"unset.",
-					).With("unset_column", column).With(
-						"composite_columns",
-						compositeObj.GetColumnNames(),
-					).Send()
+    // TODO: Maybe columns should be a map?
+    for _, column := range compositeObj.GetColumnNames() {
+        if column == tagValueInterface.TagValue {
+            if tagValueInterface.IsUnset() {
+                if strict {
+                    logging.Warn(
+                        "A composite object was queried and required all " +
+                            "columns to be filled but some columns were " +
+                            "unset.",
+                        logging.Extras{
+                            "unset_column": column,
+                            "composite_columns": compositeObj.GetColumnNames(),
+                        },
+                    )
 
-					return nil, "", errors.New(
-						"action requires all composite keys to be present",
-					)
-				}
-				continue
-			}
+                    return nil, "", errors.New(
+                        "action requires all composite keys to be present",
+                    )
+                }
+                continue
+            }
 
-			if len(newWhereClause) != 0 {
-				newWhereClause += ` AND `
-			}
+            if len(newWhereClause) != 0 {
+                newWhereClause += ` AND `
+            }
 
-			newWhereClause += fmt.Sprintf(
-				`%s=?`,
-				tagValueInterface.TagValue,
-			)
+            newWhereClause += fmt.Sprintf(
+                `%s=?`,
+                tagValueInterface.TagValue,
+            )
 
-			newVariableValues = append(
-				newVariableValues,
-				tagValueInterface.Interface,
-			)
-		}
-	}
+            newVariableValues = append(
+                newVariableValues,
+                tagValueInterface.Interface,
+            )
+        }
+    }
 
-	return newVariableValues, newWhereClause, nil
+    return newVariableValues, newWhereClause, nil
 }

@@ -28,7 +28,7 @@ func getMysqlDatabase(
 		dbName,
 	)
 
-	logging.Debug(fullAddress).Send()
+	logging.Debug(fullAddress)
 
 	return sqlx.Connect("mysql", fullAddress)
 }

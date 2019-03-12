@@ -99,11 +99,11 @@ func saveObject(object base.Base, session *Session) error {
 		saveObjectStatementTemplate, tableName, queryParts.AsInsert(),
 	)
 
-	logging.Debug("Running SaveObject statement.").
-		With("statement", query).
-		With("object_type", fmt.Sprintf("%T", object)).
-		With("values", fmt.Sprintf("%#+v", queryParts.VariableValues)).
-		Send()
+	logging.Debug("Running SaveObject statement.", logging.Extras{
+		"statement": query,
+		"object_type": fmt.Sprintf("%T", object),
+		"values": fmt.Sprintf("%#+v", queryParts.VariableValues),
+    })
 
 	err = doInsertion(
 		session,

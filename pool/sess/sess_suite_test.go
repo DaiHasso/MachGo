@@ -2,7 +2,6 @@ package sess_test
 
 import (
 	"testing"
-	"log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -39,15 +38,18 @@ func TestDsl(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	logLevels, err := logging.GetLogLevelsForString("DEBUG")
+    logger, err := logging.NewLogger(
+        "tests",
+        logging.WithLogWriters(GinkgoWriter),
+        logging.WithLogLevel(logging.DEBUG),
+        logging.WithFormat(logging.Standard),
+    )
 	if err != nil {
 		panic(err)
 	}
 
-	logger := logging.GetELFLogger(
-		logging.Stdout,
-		logLevels,
-	)
-	logger.SetInternalLogger(log.New(GinkgoWriter, "", 0))
-	logging.SetDefaultLogger("tests", logger)
+    err = logging.SetRootLogger("tests", logger)
+	if err != nil {
+		panic(err)
+	}
 })

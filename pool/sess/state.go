@@ -27,7 +27,7 @@ func setObjectSaved(object base.Base) error {
 
 	hash, err := base.HashObject(object)
 	if err != nil {
-		logging.Warn("Error hashing object.").Send()
+		logging.Warn("Error hashing object.")
 	}
 	objectSavedHash[hashKey] = hash
 

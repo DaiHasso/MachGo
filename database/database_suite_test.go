@@ -2,7 +2,6 @@ package database_test
 
 import (
     "database/sql"
-	"log"
 	"testing"
 
 	logging "github.com/daihasso/slogging"
@@ -78,15 +77,18 @@ func (*FakeObject) GetTableName() string {
 }
 
 var _ = BeforeSuite(func() {
-	logLevels, err := logging.GetLogLevelsForString("DEBUG")
+    logger, err := logging.NewLogger(
+        "tests",
+        logging.WithLogWriters(GinkgoWriter),
+        logging.WithLogLevel(logging.DEBUG),
+        logging.WithFormat(logging.Standard),
+    )
 	if err != nil {
 		panic(err)
 	}
 
-	logger := logging.GetELFLogger(
-		logging.Stdout,
-		logLevels,
-	)
-	logger.SetInternalLogger(log.New(GinkgoWriter, "", 0))
-	logging.SetDefaultLogger("tests", logger)
+    err = logging.SetRootLogger("tests", logger)
+	if err != nil {
+		panic(err)
+	}
 })

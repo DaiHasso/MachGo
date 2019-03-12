@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	logging "github.com/daihasso/slogging"
+	"github.com/daihasso/slogging"
 )
 
 // TagValueInterface is a type which holds both a TagValue and an
@@ -223,7 +223,7 @@ func GetGroupedFieldsWithBS(
 		fieldValue := v.Field(i)
 		tagValues, err := getAllTags(field.Tag)
 		if err != nil {
-			logging.Debug("Corrupt tag encountered.").Send()
+			logging.Debug("Corrupt tag encountered.")
 		}
 		fieldWithBS := newFieldWithBS(fieldName, &fieldValue, tagValues)
 		for i, byFilter := range byFilters {

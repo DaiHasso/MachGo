@@ -5,7 +5,7 @@ package database
 import (
 	"fmt"
 
-	logging "github.com/daihasso/slogging"
+	"github.com/daihasso/slogging"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // Drivers are not directly utilized.
 	"github.com/pkg/errors"
@@ -30,9 +30,9 @@ func getPostgresDatabase(
 		dbName,
 	)
 
-	logging.Debug("Connecting to postgres database.").
-		With("database_address", fullAddress).
-		Send()
+	logging.Debug("Connecting to postgres database.", logging.Extras{
+		"database_address": fullAddress,
+    })
 
 	return sqlx.Open("postgres", fullAddress)
 }

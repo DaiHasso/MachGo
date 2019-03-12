@@ -1,7 +1,6 @@
 package dot_test
 
 import (
-	"log"
 	"testing"
 
 	logging "github.com/daihasso/slogging"
@@ -34,17 +33,20 @@ func (self *testObject) Relationships() []MachGo.Relationship {
 }
 
 var _ = BeforeSuite(func() {
-	logLevels, err := logging.GetLogLevelsForString("DEBUG")
-	if err != nil {
-		panic(err)
-	}
+    logger, err := logging.NewLogger(
+        "tests",
+        logging.WithLogWriters(GinkgoWriter),
+        logging.WithLogLevel(logging.DEBUG),
+        logging.WithFormat(logging.Standard),
+    )
+    if err != nil {
+        panic(err)
+    }
 
-	logger := logging.GetELFLogger(
-		logging.Stdout,
-		logLevels,
-	)
-	logger.SetInternalLogger(log.New(GinkgoWriter, "", 0))
-	logging.SetDefaultLogger("tests", logger)
+    err = logging.SetRootLogger("tests", logger)
+    if err != nil {
+        panic(err)
+    }
 
 	object1 = &testObject{
 		DefaultDBObject: MachGo.DefaultDBObject{},

@@ -18,10 +18,13 @@ func (self Session) Transactionized(
 		if tx != nil {
 			newErr := tx.Rollback()
 			if newErr != nil {
-				logging.Error("Failed to rollback transaction.").
-					With("rollback_error", newErr.Error()).
-					With("initial_error", oldError.Error()).
-					Send()
+				logging.Error(
+                    "Failed to rollback transaction.",
+                    logging.Extras{
+                        "rollback_error": newErr.Error(),
+                        "initial_error": oldError.Error(),
+                    },
+                )
 				return errors.Wrap(oldError, newErr.Error())
 			}
 		}
@@ -45,17 +48,17 @@ func (self Session) Transactionized(
 
 	tx, err = self.Pool.Beginx()
 	if err != nil {
-		logging.Error("Error beginning transaction.").
-			With("error", fmt.Sprint(err)).
-			Send()
+		logging.Error("Error beginning transaction.", logging.Extras{
+			"error": fmt.Sprint(err),
+        })
 		return rollBack(tx, err)
 	}
 
 	err = fn(tx)
 	if err != nil {
-		logging.Error("Error running transaction.").
-			With("error", fmt.Sprint(err)).
-			Send()
+		logging.Error("Error running transaction.", logging.Extras{
+			"error": fmt.Sprint(err),
+        })
 		return rollBack(tx, err)
 	}
 

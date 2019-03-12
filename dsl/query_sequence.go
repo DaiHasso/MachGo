@@ -95,9 +95,7 @@ func NewJoin(objects ...MachGo.Object) *QuerySequence {
 	manager, err := database.NewManager()
 	if err != nil {
 		// TODO: Maybe this is a panic? Or check for specific error.
-		logging.Debug(
-			"QuerySequence created without global manager set.",
-		).Send()
+		logging.Debug("QuerySequence created without global manager set.")
 	} else {
 		querySequence.manager = manager
 	}

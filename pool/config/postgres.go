@@ -60,9 +60,12 @@ func NewPostgresPool(config Config) (*pool.ConnectionPool, error) {
 		)
 	}
 
-	logging.Debug("Creating pool connection to postgres database.").With(
-		"connection_string", cleanedConnString,
-	).Send()
+	logging.Debug(
+        "Creating pool connection to postgres database.",
+        logging.Extras{
+            "connection_string": cleanedConnString,
+        },
+    )
 
 	dbPool, err := database.PostgresConnection(connectionString)
 	if err != nil {
