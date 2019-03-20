@@ -1,9 +1,9 @@
 package dot
 
 import (
-	"github.com/daihasso/machgo/dsl"
+    "github.com/daihasso/machgo/dsl"
 )
 
 func Query() *dsl.QuerySequence {
-	return dsl.NewQuerySequence()
+    return dsl.NewQuerySequence()
 }

@@ -1,34 +1,34 @@
 package database
 
 import (
-	"fmt"
+    "fmt"
 
-	logging "github.com/daihasso/slogging"
+    logging "github.com/daihasso/slogging"
 
-	_ "github.com/go-sql-driver/mysql" // Drivers are not directly utilized.
-	"github.com/jmoiron/sqlx"
+    _ "github.com/go-sql-driver/mysql" // Drivers are not directly utilized.
+    "github.com/jmoiron/sqlx"
 )
 
 var mysqlAddressTemplate = "%s:%s@tcp(%s:%s)/%s" +
-	"?parseTime=true&loc=UTC"
+    "?parseTime=true&loc=UTC"
 
 func getMysqlDatabase(
-	username,
-	password,
-	serverAddress,
-	port,
-	dbName string,
+    username,
+    password,
+    serverAddress,
+    port,
+    dbName string,
 ) (*sqlx.DB, error) {
-	fullAddress := fmt.Sprintf(
-		mysqlAddressTemplate,
-		username,
-		password,
-		serverAddress,
-		port,
-		dbName,
-	)
+    fullAddress := fmt.Sprintf(
+        mysqlAddressTemplate,
+        username,
+        password,
+        serverAddress,
+        port,
+        dbName,
+    )
 
-	logging.Debug(fullAddress)
+    logging.Debug(fullAddress)
 
-	return sqlx.Connect("mysql", fullAddress)
+    return sqlx.Connect("mysql", fullAddress)
 }

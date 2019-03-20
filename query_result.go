@@ -1,13 +1,13 @@
-package MachGo
+package machgo
 
 import (
     "fmt"
     "reflect"
     "strings"
 
-	"github.com/jmoiron/sqlx"
+    "github.com/jmoiron/sqlx"
 
-	"github.com/daihasso/machgo/refl"
+    "github.com/daihasso/machgo/refl"
 )
 
 

@@ -1,13 +1,13 @@
 package pool
 
 import (
-	"github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/database/dbtype"
 
-	"github.com/jmoiron/sqlx"
+    "github.com/jmoiron/sqlx"
 )
 
 type ConnectionPool struct {
-	sqlx.DB
+    sqlx.DB
 
-	Type dbtype.Type
+    Type dbtype.Type
 }

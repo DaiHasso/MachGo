@@ -4,13 +4,13 @@ import (
 )
 
 type actionOptions struct {
-	stopOnFailure bool
+    stopOnFailure bool
 }
 
 type actionOption func(*actionOptions)
 
 var StopOnFailure = func(ops *actionOptions) {
-	ops.stopOnFailure = true
+    ops.stopOnFailure = true
 }
 
 type ObjectOrOption interface{}

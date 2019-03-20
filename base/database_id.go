@@ -4,11 +4,11 @@ import (
 )
 
 type DatabaseIDGenerator interface {
-	DatabaseGeneratedID()
+    DatabaseGeneratedID()
 }
 
 type DatabaseFuncIDGenerator interface {
-	DatabaseIDGenerationFunc() LiteralStatement
+    DatabaseIDGenerationFunc() LiteralStatement
 }
 
 type DatabaseManagedID struct {}

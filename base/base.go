@@ -3,11 +3,11 @@ package base
 type Base interface {}
 
 type PreInserter interface {
-	PreInsertActions() error
+    PreInsertActions() error
 }
 
 type PostInserter interface {
-	PostInsertActions() error
+    PostInsertActions() error
 }
 
 type Saveable interface {
@@ -16,14 +16,14 @@ type Saveable interface {
 }
 
 type TraditionalID interface {
-	SetID(interface{}) error
-	ID() (interface{}, bool)
+    SetID(interface{}) error
+    ID() (interface{}, bool)
 }
 
 type IDColumner interface {
-	IDColumn() string
+    IDColumn() string
 }
 
 type IDGenerator interface {
-	NewID() interface{}
+    NewID() interface{}
 }

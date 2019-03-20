@@ -2,36 +2,36 @@ package database_test
 
 import (
     "database/sql"
-	"testing"
+    "testing"
 
-	logging "github.com/daihasso/slogging"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/jmoiron/sqlx"
+    logging "github.com/daihasso/slogging"
+    . "github.com/onsi/ginkgo"
+    . "github.com/onsi/gomega"
+    "github.com/jmoiron/sqlx"
     sqlmock "github.com/DATA-DOG/go-sqlmock"
 
-	"github.com/daihasso/machgo"
+    "github.com/daihasso/machgo"
 )
 
 var (
-	db      *sql.DB
-	dbx      *sqlx.DB
-	mock    sqlmock.Sqlmock
+    db      *sql.DB
+    dbx      *sqlx.DB
+    mock    sqlmock.Sqlmock
 )
 
 func TestDatabase(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Database Package Suite")
+    RegisterFailHandler(Fail)
+    RunSpecs(t, "Database Package Suite")
 }
 
 type WeirdObject struct {}
 
 func (*WeirdObject) GetTableName() string {
-	return "weird_objects"
+    return "weird_objects"
 }
 
 func (*WeirdObject) IsSaved() bool {
-	return false
+    return false
 }
 
 func (*WeirdObject) SetSaved(bool) {}
@@ -39,41 +39,41 @@ func (*WeirdObject) PreInsertActions() error { return nil }
 func (*WeirdObject) PostInsertActions() error { return nil }
 
 type FakeCompositeObject struct {
-	MachGo.DefaultCompositeDBObject
+    machgo.DefaultCompositeDBObject
 
-	Name string `db:"name"`
-	Email string `db:"email"`
-	Address string `db:"address"`
+    Name string `db:"name"`
+    Email string `db:"email"`
+    Address string `db:"address"`
 }
 
 func (*FakeCompositeObject) GetTableName() string {
-	return "fake_composite_objects"
+    return "fake_composite_objects"
 }
 
 func (*FakeCompositeObject) GetColumnNames() []string {
-	return []string{"name", "email"}
+    return []string{"name", "email"}
 }
 
 type FakeComplicatedObject struct {
-	MachGo.DefaultDBObject
+    machgo.DefaultDBObject
 
-	Name string `db:"name"`
-	Email string `db:"email"`
-	Address string `db:"address"`
+    Name string `db:"name"`
+    Email string `db:"email"`
+    Address string `db:"address"`
 }
 
 func (*FakeComplicatedObject) GetTableName() string {
-	return "fake_complicated_objects"
+    return "fake_complicated_objects"
 }
 
 type FakeObject struct {
-	MachGo.DefaultDBObject
+    machgo.DefaultDBObject
 
-	Name string `db:"name"`
+    Name string `db:"name"`
 }
 
 func (*FakeObject) GetTableName() string {
-	return "fake_objects"
+    return "fake_objects"
 }
 
 var _ = BeforeSuite(func() {
@@ -83,12 +83,12 @@ var _ = BeforeSuite(func() {
         logging.WithLogLevel(logging.DEBUG),
         logging.WithFormat(logging.Standard),
     )
-	if err != nil {
-		panic(err)
-	}
+    if err != nil {
+        panic(err)
+    }
 
     err = logging.SetRootLogger("tests", logger)
-	if err != nil {
-		panic(err)
-	}
+    if err != nil {
+        panic(err)
+    }
 })

@@ -11,7 +11,7 @@ import (
     . "github.com/onsi/gomega"
 
     sqlmock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/jmoiron/sqlx"
+    "github.com/jmoiron/sqlx"
 
     "github.com/daihasso/machgo/database/dbtype"
     "github.com/daihasso/machgo/dsl"

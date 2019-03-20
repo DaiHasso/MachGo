@@ -1,15 +1,15 @@
-package MachGo
+package machgo
 
 import (
-	"fmt"
-	"regexp"
+    "fmt"
+    "regexp"
 )
 
 var columnAliasStringRegex = regexp.MustCompile(`^([^_]+)_(.*)$`)
 
 type ColumnAlias struct {
-	TableAlias,
-	ColumnName string
+    TableAlias,
+    ColumnName string
 }
 
 type ColumnAliasField struct {
@@ -18,20 +18,20 @@ type ColumnAliasField struct {
 }
 
 func (self ColumnAlias) String() string {
-	return fmt.Sprintf("%s_%s", self.TableAlias, self.ColumnName)
+    return fmt.Sprintf("%s_%s", self.TableAlias, self.ColumnName)
 }
 
 func ColumnAliasFromString(rawColumn string) (*ColumnAlias, bool) {
-	if !columnAliasStringRegex.MatchString(rawColumn) {
-		return nil, false
-	}
+    if !columnAliasStringRegex.MatchString(rawColumn) {
+        return nil, false
+    }
 
-	results := columnAliasStringRegex.FindStringSubmatch(rawColumn)
+    results := columnAliasStringRegex.FindStringSubmatch(rawColumn)
 
-	columnAlias := &ColumnAlias{
-		TableAlias: results[1],
-		ColumnName: results[2],
-	}
+    columnAlias := &ColumnAlias{
+        TableAlias: results[1],
+        ColumnName: results[2],
+    }
 
-	return columnAlias, true
+    return columnAlias, true
 }

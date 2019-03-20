@@ -1,9 +1,9 @@
 package session
 
 import (
-	"sync"
+    "sync"
 
-	"github.com/daihasso/machgo/database"
+    "github.com/daihasso/machgo/database"
 )
 
 var once sync.Once
@@ -13,22 +13,22 @@ var globalManager *database.Manager
 
 // SetGlobalManager sets the manager for all raw session initializations.
 func SetGlobalManager(manager *database.Manager) {
-	globalManagerMutex.Lock()
-	defer globalManagerMutex.Unlock()
+    globalManagerMutex.Lock()
+    defer globalManagerMutex.Unlock()
 
-	globalManager = manager
+    globalManager = manager
 }
 
 // GetGlobalManager gets the manager for all raw session initializations.
 func GetGlobalManager(manager *database.Manager) *database.Manager {
-	globalManagerMutex.RLock()
-	defer globalManagerMutex.RUnlock()
+    globalManagerMutex.RLock()
+    defer globalManagerMutex.RUnlock()
 
-	return globalManager
+    return globalManager
 }
 
 func init() {
-	once.Do(func() {
-		globalManagerMutex = new(sync.RWMutex)
-	})
+    once.Do(func() {
+        globalManagerMutex = new(sync.RWMutex)
+    })
 }

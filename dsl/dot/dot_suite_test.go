@@ -1,35 +1,35 @@
 package dot_test
 
 import (
-	"testing"
+    "testing"
 
-	logging "github.com/daihasso/slogging"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+    logging "github.com/daihasso/slogging"
+    . "github.com/onsi/ginkgo"
+    . "github.com/onsi/gomega"
 
-	"github.com/daihasso/machgo"
+    "github.com/daihasso/machgo"
 )
 
 var object1, object2, object3, object4, object5 *testObject
 
 func TestDot(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dot Package Suite")
+    RegisterFailHandler(Fail)
+    RunSpecs(t, "Dot Package Suite")
 }
 
 type testObject struct {
-	MachGo.DefaultDBObject
-	table         string
-	relationships []MachGo.Relationship
-	Name string `db:"name"`
+    machgo.DefaultDBObject
+    table         string
+    relationships []machgo.Relationship
+    Name string `db:"name"`
 }
 
 func (self *testObject) GetTableName() string {
-	return self.table
+    return self.table
 }
 
-func (self *testObject) Relationships() []MachGo.Relationship {
-	return self.relationships
+func (self *testObject) Relationships() []machgo.Relationship {
+    return self.relationships
 }
 
 var _ = BeforeSuite(func() {
@@ -48,62 +48,62 @@ var _ = BeforeSuite(func() {
         panic(err)
     }
 
-	object1 = &testObject{
-		DefaultDBObject: MachGo.DefaultDBObject{},
-		table:           "testtable1",
-		relationships:   make([]MachGo.Relationship, 0),
-	}
+    object1 = &testObject{
+        DefaultDBObject: machgo.DefaultDBObject{},
+        table:           "testtable1",
+        relationships:   make([]machgo.Relationship, 0),
+    }
 
-	object2 = &testObject{
-		DefaultDBObject: MachGo.DefaultDBObject{},
-		table:           "testtable2",
-	}
+    object2 = &testObject{
+        DefaultDBObject: machgo.DefaultDBObject{},
+        table:           "testtable2",
+    }
 
-	object3 = &testObject{
-		DefaultDBObject: MachGo.DefaultDBObject{},
-		table:           "testtable3",
-	}
+    object3 = &testObject{
+        DefaultDBObject: machgo.DefaultDBObject{},
+        table:           "testtable3",
+    }
 
-	object4 = &testObject{
-		DefaultDBObject: MachGo.DefaultDBObject{},
-		table:           "testtable4",
-	}
+    object4 = &testObject{
+        DefaultDBObject: machgo.DefaultDBObject{},
+        table:           "testtable4",
+    }
 
-	object5 = &testObject{
-		DefaultDBObject: MachGo.DefaultDBObject{},
-		table:           "testtable5",
-	}
+    object5 = &testObject{
+        DefaultDBObject: machgo.DefaultDBObject{},
+        table:           "testtable5",
+    }
 
-	object2.relationships = []MachGo.Relationship{
-		MachGo.Relationship{
-			SelfObject: object2,
-			TargetObject: object1,
-			SelfColumn: "foo",
-			TargetColumn: "bar",
-		},
-	}
-	object3.relationships = []MachGo.Relationship{
-		MachGo.Relationship{
-			SelfObject: object3,
-			TargetObject: object1,
-			SelfColumn: "baz",
-			TargetColumn: "test",
-		},
-	}
-	object4.relationships = []MachGo.Relationship{
-		MachGo.Relationship{
-			SelfObject: object4,
-			TargetObject: object3,
-			SelfColumn:   "baz2",
-			TargetColumn: "test2",
-		},
-	}
-	object5.relationships = []MachGo.Relationship{
-		MachGo.Relationship{
-			SelfObject: object5,
-			TargetObject: object3,
-			SelfColumn:   "baz3",
-			TargetColumn: "test3",
-		},
-	}
+    object2.relationships = []machgo.Relationship{
+        machgo.Relationship{
+            SelfObject: object2,
+            TargetObject: object1,
+            SelfColumn: "foo",
+            TargetColumn: "bar",
+        },
+    }
+    object3.relationships = []machgo.Relationship{
+        machgo.Relationship{
+            SelfObject: object3,
+            TargetObject: object1,
+            SelfColumn: "baz",
+            TargetColumn: "test",
+        },
+    }
+    object4.relationships = []machgo.Relationship{
+        machgo.Relationship{
+            SelfObject: object4,
+            TargetObject: object3,
+            SelfColumn:   "baz2",
+            TargetColumn: "test2",
+        },
+    }
+    object5.relationships = []machgo.Relationship{
+        machgo.Relationship{
+            SelfObject: object5,
+            TargetObject: object3,
+            SelfColumn:   "baz3",
+            TargetColumn: "test3",
+        },
+    }
 })

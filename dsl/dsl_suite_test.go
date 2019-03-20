@@ -1,23 +1,23 @@
 package dsl_test
 
 import (
-	"testing"
+    "testing"
 
-	database "github.com/daihasso/machgo"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	logging "github.com/daihasso/slogging"
+    database "github.com/daihasso/machgo"
+    . "github.com/onsi/ginkgo"
+    . "github.com/onsi/gomega"
+    logging "github.com/daihasso/slogging"
 )
 
 var (
-	expectedFormat                              = `query: "%s", args: (%+v)`
-	object1, object2, object3, object4, object5 *testObject
-	object6 *testObjectWithCreated
+    expectedFormat                              = `query: "%s", args: (%+v)`
+    object1, object2, object3, object4, object5 *testObject
+    object6 *testObjectWithCreated
 )
 
 func TestDsl(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dsl Package Suite")
+    RegisterFailHandler(Fail)
+    RunSpecs(t, "Dsl Package Suite")
 }
 
 var _ = BeforeSuite(func() {

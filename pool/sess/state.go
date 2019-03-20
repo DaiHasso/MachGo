@@ -1,12 +1,12 @@
 package sess
 
 import (
-	"sync"
+    "sync"
 
-	logging "github.com/daihasso/slogging"
-	"github.com/pkg/errors"
+    logging "github.com/daihasso/slogging"
+    "github.com/pkg/errors"
 
-	"github.com/daihasso/machgo/base"
+    "github.com/daihasso/machgo/base"
 )
 
 var once sync.Once
@@ -15,80 +15,80 @@ var savedObjects map[interface{}]bool
 var objectSavedHash map[interface{}]uint64
 
 func setObjectSaved(object base.Base) error {
-	globalObjectStateMutex.Lock()
-	defer globalObjectStateMutex.Unlock()
+    globalObjectStateMutex.Lock()
+    defer globalObjectStateMutex.Unlock()
 
-	hashKey, err := calculateHashKey(object)
-	if err != nil {
-		return err
-	}
+    hashKey, err := calculateHashKey(object)
+    if err != nil {
+        return err
+    }
 
-	savedObjects[hashKey] = true
+    savedObjects[hashKey] = true
 
-	hash, err := base.HashObject(object)
-	if err != nil {
-		logging.Warn("Error hashing object.")
-	}
-	objectSavedHash[hashKey] = hash
+    hash, err := base.HashObject(object)
+    if err != nil {
+        logging.Warn("Error hashing object.")
+    }
+    objectSavedHash[hashKey] = hash
 
-	return nil
+    return nil
 }
 
 func objectIsSaved(object base.Base) (bool, error) {
-	globalObjectStateMutex.RLock()
-	defer globalObjectStateMutex.RUnlock()
+    globalObjectStateMutex.RLock()
+    defer globalObjectStateMutex.RUnlock()
 
-	hashKey, err := calculateHashKey(object)
-	if err == BaseIdentifierUnsetError {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	if _, ok := savedObjects[hashKey]; ok {
-		return true, nil
-	}
+    hashKey, err := calculateHashKey(object)
+    if err == BaseIdentifierUnsetError {
+        return false, nil
+    } else if err != nil {
+        return false, err
+    }
+    if _, ok := savedObjects[hashKey]; ok {
+        return true, nil
+    }
 
-	return false, nil
+    return false, nil
 }
 
 func ObjectChanged(object base.Base) bool {
-	hashKey, err := calculateHashKey(object)
-	if err != nil {
-		panic(err)
-	}
+    hashKey, err := calculateHashKey(object)
+    if err != nil {
+        panic(err)
+    }
 
-	if hash, ok := objectSavedHash[hashKey]; ok {
-		newHash, err := base.HashObject(object)
-		if err != nil || hash != newHash {
-			return true
-		}
+    if hash, ok := objectSavedHash[hashKey]; ok {
+        newHash, err := base.HashObject(object)
+        if err != nil || hash != newHash {
+            return true
+        }
 
-		return false
-	}
+        return false
+    }
 
-	return true
+    return true
 }
 
 func calculateHashKey(object base.Base) (interface{}, error) {
-	identifier := identifierFromBase(object)
-	if !identifier.exists {
-		return nil, errors.New("Object provided did not have an identifier.")
-	} else if !identifier.isSet {
-		return nil, BaseIdentifierUnsetError
-	}
+    identifier := identifierFromBase(object)
+    if !identifier.exists {
+        return nil, errors.New("Object provided did not have an identifier.")
+    } else if !identifier.isSet {
+        return nil, BaseIdentifierUnsetError
+    }
 
-	tableName, err := base.BaseTable(object)
-	if err != nil {
-		return nil, err
-	}
-	hashKey := [2]interface{}{identifier.value, tableName}
-	return hashKey, nil
+    tableName, err := base.BaseTable(object)
+    if err != nil {
+        return nil, err
+    }
+    hashKey := [2]interface{}{identifier.value, tableName}
+    return hashKey, nil
 }
 
 func init() {
-	once.Do(func() {
-		globalObjectStateMutex = new(sync.RWMutex)
-		savedObjects = make(map[interface{}]bool)
-		objectSavedHash = make(map[interface{}]uint64)
-	})
+    once.Do(func() {
+        globalObjectStateMutex = new(sync.RWMutex)
+        savedObjects = make(map[interface{}]bool)
+        objectSavedHash = make(map[interface{}]uint64)
+    })
 }

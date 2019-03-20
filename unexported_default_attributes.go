@@ -1,25 +1,25 @@
-package MachGo
+package machgo
 
 import (
-	"time"
+    "time"
 
-	"github.com/daihasso/machgo/types"
+    "github.com/daihasso/machgo/types"
 )
 
 // UnexportedDefaultAttributes is a set of sensible default attributes for an
 // object that are not exported when serialized.
 type UnexportedDefaultAttributes struct {
-	Created types.Timestamp `db:"created" json:"-"`
-	Updated types.Timestamp `db:"updated" json:"-"`
+    Created types.Timestamp `db:"created" json:"-"`
+    Updated types.Timestamp `db:"updated" json:"-"`
 }
 
 // Update will update the updated time.
 func (j *UnexportedDefaultAttributes) Update() {
-	j.Updated = types.Timestamp{Time: time.Now()}
+    j.Updated = types.Timestamp{Time: time.Now()}
 }
 
 // Init will initialize the created time and updated time.
 func (j *UnexportedDefaultAttributes) Init() {
-	j.Created = types.Timestamp{Time: time.Now()}
-	j.Update()
+    j.Created = types.Timestamp{Time: time.Now()}
+    j.Update()
 }

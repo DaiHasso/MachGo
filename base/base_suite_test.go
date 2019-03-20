@@ -1,16 +1,16 @@
 package base_test
 
 import (
-	"testing"
+    "testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	logging "github.com/daihasso/slogging"
+    . "github.com/onsi/ginkgo"
+    . "github.com/onsi/gomega"
+    logging "github.com/daihasso/slogging"
 )
 
 func TestDsl(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Base Package Suite")
+    RegisterFailHandler(Fail)
+    RunSpecs(t, "Base Package Suite")
 }
 
 var _ = BeforeSuite(func() {

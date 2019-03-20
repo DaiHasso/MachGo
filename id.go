@@ -1,10 +1,10 @@
-package MachGo
+package machgo
 
 import (
-	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
+    "database/sql"
+    "database/sql/driver"
+    "encoding/json"
+    "fmt"
 )
 
 // ID is a type of attribute for an object that implements some conversion
@@ -14,9 +14,9 @@ import (
 //   * To string
 //   * From/To JSON
 type ID interface {
-	sql.Scanner
-	driver.Valuer
-	fmt.Stringer
-	json.Marshaler
-	json.Unmarshaler
+    sql.Scanner
+    driver.Valuer
+    fmt.Stringer
+    json.Marshaler
+    json.Unmarshaler
 }
