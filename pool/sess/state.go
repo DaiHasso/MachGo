@@ -1,6 +1,7 @@
 package sess
 
 import (
+    "fmt"
     "sync"
 
     logging "github.com/daihasso/slogging"
@@ -70,18 +71,23 @@ func ObjectChanged(object base.Base) bool {
 }
 
 func calculateHashKey(object base.Base) (interface{}, error) {
-    identifier := identifierFromBase(object)
-    if !identifier.exists {
-        return nil, errors.New("Object provided did not have an identifier.")
-    } else if !identifier.isSet {
-        return nil, BaseIdentifierUnsetError
-    }
-
     tableName, err := base.BaseTable(object)
     if err != nil {
-        return nil, err
+        return nil, errors.Wrap(err, "Error grabbing table name for base")
     }
-    hashKey := [2]interface{}{identifier.value, tableName}
+    identifiers := base.GetId(object)
+    hashKey := tableName
+    for _, identifier := range identifiers {
+        if !identifier.Exists {
+            return nil, errors.New(
+                "Object provided did not have an identifier",
+            )
+        } else if !identifier.IsSet {
+            return nil, BaseIdentifierUnsetError
+        }
+
+        hashKey += fmt.Sprint(identifier.Value)
+    }
     return hashKey, nil
 }
 

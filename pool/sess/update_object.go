@@ -2,6 +2,7 @@ package sess
 
 import (
     "fmt"
+    "database/sql"
 
     "github.com/pkg/errors"
     "github.com/jmoiron/sqlx"
@@ -12,16 +13,18 @@ import (
 var updateObjectStatementTemplate = `UPDATE %s SET %s WHERE %s`
 
 func updateObject(object base.Base, session *Session) error {
-    identifier := identifierFromBase(object)
-    if !identifier.exists {
-        return errors.New(
-            "Object provided to UpdateObject doesn't have an identifier.",
-        )
-    } else if !identifier.isSet {
-        return errors.New(
-            "Object provided to UpdateObject has an identifier but it " +
-                "hasn't been set.",
-        )
+    identifiers := base.GetId(object)
+    for _, identifier := range identifiers {
+        if !identifier.Exists {
+            return errors.New(
+                "Object provided to UpdateObject doesn't have an identifier.",
+            )
+        } else if !identifier.IsSet {
+            return errors.New(
+                "Object provided to UpdateObject has an identifier but it " +
+                    "hasn't been set.",
+            )
+        }
     }
     if !ObjectChanged(object) {
         return nil
@@ -32,7 +35,8 @@ func updateObject(object base.Base, session *Session) error {
         return errors.Wrap(err, "Error while trying to get table name")
     }
 
-    whereString, whereValues := updateWhere(object, identifier)
+    q := updateWhere(object, identifiers)
+    whereString, whereValues := q.QueryValue(nil)
 
     queryParts := QueryPartsFromObject(object)
 
@@ -46,10 +50,15 @@ func updateObject(object base.Base, session *Session) error {
     err = session.Transactionized(func(tx *sqlx.Tx) error {
         var err error
 
-        insertValues := append(queryParts.VariableValues, whereValues...)
+        for _, whereValue := range whereValues {
+            if named, ok := whereValue.(sql.NamedArg); ok {
+                queryParts.AddValue(named)
+            }
+        }
+
         statement = tx.Rebind(statement)
 
-        _, err = tx.Exec(statement, insertValues...)
+        _, err = tx.NamedExec(statement, queryParts.VariableValueMap)
 
         return err
     })

@@ -1,9 +1,9 @@
 package sess
 
 import (
-    "github.com/daihasso/machgo"
+    "github.com/daihasso/machgo/base"
     "github.com/daihasso/machgo/pool"
-    "github.com/daihasso/machgo/dsl"
+    "github.com/daihasso/machgo/query"
     "github.com/daihasso/machgo/database"
 )
 
@@ -13,13 +13,12 @@ type Session struct {
     Pool *pool.ConnectionPool
 }
 
-func (self Session) Query(objects ...machgo.Object) *dsl.QuerySequence {
-    qs := dsl.NewQuerySequence()
+func (self Session) Query(objects ...base.Base) *query.Query {
+    q := query.NewQuery(self.Pool)
     if len(objects) > 0 {
-        qs.Join(objects...)
+        q.Join(objects...)
     }
-    qs.SetPool(self.Pool)
-    return qs
+    return q
 }
 
 func (self Session) Manager() (*database.Manager, error) {
@@ -39,15 +38,14 @@ func NewSessionFromPool(connPool *pool.ConnectionPool) *Session {
     return &Session{connPool}
 }
 
-func Query(objects ...machgo.Object) *dsl.QuerySequence {
-    qs := dsl.NewQuerySequence()
-    if len(objects) > 0 {
-        qs.Join(objects...)
-    }
+func Query(objects ...base.Base) *query.Query {
     connPool, err := pool.GlobalConnectionPool()
     if err != nil {
-        panic(err)
+        return nil
     }
-    qs.SetPool(connPool)
-    return qs
+    q := query.NewQuery(connPool)
+    if len(objects) > 0 {
+        q.Join(objects...)
+    }
+    return q
 }

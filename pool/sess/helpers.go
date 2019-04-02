@@ -3,8 +3,10 @@ package sess
 import (
     "database/sql"
     "fmt"
+    "math/rand"
     "sort"
 
+    "github.com/daihasso/machgo/query/qtypes"
     "github.com/daihasso/machgo/base"
     "github.com/daihasso/machgo/refl"
 )
@@ -24,7 +26,7 @@ func processSortedNamedValues(
 ) {
     // TODO: Do we want to also convert non-tagged data to columns? Maybe
     //       optionally?
-    var variableNames []string
+    var tagValues []string
 
     // NOTE: Is this really the best way to do this? Memory will be 2x;
     //       might not be good.
@@ -35,55 +37,60 @@ func processSortedNamedValues(
         "db",
         func(name string, tagValueInterface refl.TagValueInterface) {
             tagValue := tagValueInterface.TagValue
-            variableNames = append(variableNames, tagValue)
-            namedValue := sql.Named(tagValue, tagValueInterface.Interface)
+            randomNumber := rand.Int() // #nosec: G404
+            variableName := fmt.Sprintf("%s_%d", tagValue, randomNumber)
+            tagValues = append(tagValues, tagValue)
+            namedValue := sql.Named(variableName, tagValueInterface.Interface)
             tagValueArg[tagValue] = &namedValue
         },
     )
 
-    sort.Strings(variableNames)
+    sort.Strings(tagValues)
 
-    for _, variableName := range variableNames {
-        namedArg := tagValueArg[variableName]
+    for _, tagValue := range tagValues {
+        namedArg := tagValueArg[tagValue]
         for _, iterator := range iterators {
-            iterator(variableName, namedArg)
+            iterator(tagValue, namedArg)
         }
     }
 }
 
 func updateWhere(
-    object base.Base, identifier objectIdentifier,
-) (string, []interface{}) {
+    object base.Base, identifiers []base.BaseIdentifier,
+) qtypes.Queryable {
     // TODO: Support composites.
-    whereString := ""
-    idColumn := objectIdColumn(object)
+    var where []qtypes.Queryable
+    for _, identifier := range identifiers {
+        q := qtypes.NewDefaultCondition(
+            qtypes.ColumnQueryable{
+                ColumnName: identifier.Column,
+            },
+            qtypes.InterfaceToQueryable(identifier.Value),
+            qtypes.EqualCombiner,
+        )
 
-    bindvar := "identifier"
-    namedIdentifier := sql.Named(bindvar, identifier.value)
+        where = append(where, q)
+    }
 
-    whereString = fmt.Sprintf("%s = @%s", idColumn, bindvar)
-
-    return whereString, []interface{}{namedIdentifier}
+    return qtypes.NewMultiAndCondition(where...)
 }
 
-func separateArgs(args []ObjectOrOption) ([]base.Base, []actionOption) {
+func separateArgs(args []ObjectsOrOptions) ([]base.Base, []actionOption) {
     var (
         objects []base.Base
         options []actionOption
     )
     for _, arg := range args {
-        if opt, ok := arg.(actionOption); ok {
-            options = append(options, opt)
-        } else {
-            objects = append(objects, arg)
-        }
+        opts, objs := arg()
+        options = append(options, opts...)
+        objects = append(objects, objs...)
     }
 
     return objects, options
 }
 
 
-func separateAndApply(args []ObjectOrOption) ([]base.Base, *actionOptions) {
+func separateAndApply(args []ObjectsOrOptions) ([]base.Base, *actionOptions) {
     objects, options := separateArgs(args)
 
     optionSet := new(actionOptions)

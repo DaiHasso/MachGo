@@ -29,14 +29,16 @@ func (self Session) Transactionized(
             }
         }
 
-        return oldError
+        return errors.Wrap(oldError, "Error in action for transaction")
     }
 
     // Recover if something crazy happens.
     defer func() {
         if r := recover(); r != nil {
             if runtimeErr, ok := r.(runtime.Error); ok {
-                panic(runtimeErr)
+                panic(fmt.Sprintf(
+                    "%#+v", errors.Wrap(runtimeErr, "Runtime error"),
+                ))
             }
 
             panicErr := errors.Wrapf(

@@ -1,16 +1,16 @@
-package base_test
+package actrec
 
 import (
-    "testing"
+	"testing"
 
-    . "github.com/onsi/ginkgo"
-    . "github.com/onsi/gomega"
     "github.com/daihasso/slogging"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestDsl(t *testing.T) {
-    RegisterFailHandler(Fail)
-    RunSpecs(t, "Base Package Suite")
+func TestActrec(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Actrec Suite")
 }
 
 var _ = BeforeSuite(func() {

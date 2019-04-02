@@ -27,3 +27,7 @@ type IDColumner interface {
 type IDGenerator interface {
     NewID() interface{}
 }
+
+type CompositeKey interface {
+    CompositeKey() []string
+}

@@ -17,25 +17,29 @@ func getObject(
 ) error {
     var err error
 
-    identifier := identifierFromBase(target)
-    if !identifier.exists {
+    identifiers := base.GetId(target)
+    if len(identifiers) > 1 {
+        return errors.New("Can't use get with a composite object")
+    }
+    identifier := identifiers[0]
+    if !identifier.Exists {
         return errors.New(
             "Object provided to GetObject doesn't have an identifier.",
         )
-    } else if identifier.isSet {
+    } else if identifier.IsSet {
         return errors.New(
             "Object provided to GetObject has an identifier set, it should " +
                 "be a new instance with no identifier.",
         )
     }
 
-    if identifier.value != nil &&
-        reflect.TypeOf(identifier.value) != reflect.TypeOf(idValue) {
+    if identifier.Value != nil &&
+        reflect.TypeOf(identifier.Value) != reflect.TypeOf(idValue) {
         return errors.Errorf(
             "Type of provided id (%T) does not match identifier type for " +
                 "object (%T).",
             idValue,
-            identifier.value,
+            identifier.Value,
         )
     }
 

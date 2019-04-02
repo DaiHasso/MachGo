@@ -3,6 +3,8 @@ package refl
 import (
     "unicode"
     "reflect"
+    "regexp"
+    "strings"
 
     "github.com/pkg/errors"
 )
@@ -25,15 +27,10 @@ func GuessTableName(in interface{}) (string, error) {
 }
 
 func UpperCamelToSnake(raw string) string {
-    fieldString := ""
-    for i := 0; i < len(raw); i++ {
-        curChar := raw[i]
-        if unicode.IsUpper(rune(curChar)) && i != 0{
-            fieldString += "_"
-        }
-        fieldString += string(unicode.ToLower(rune(curChar)))
-    }
-    return fieldString
+    re1 := regexp.MustCompile(`(.)([A-Z][a-z]+)`)
+    re2 := regexp.MustCompile(`([a-z0-9])([A-Z])`)
+    s1 := re1.ReplaceAllString(raw, `${1}_${2}`)
+    return strings.ToLower(re2.ReplaceAllString(s1, `${1}_${2}`))
 }
 
 func LowerSnakeToUpperCamel(lowerSnake string) string {

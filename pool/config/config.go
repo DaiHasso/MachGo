@@ -33,7 +33,10 @@ var DefaultPostgresConfig = Config{
     port: 5432,
     databaseType: dbtype.Postgres,
     postgresSpecific: postgresConfig{
-        sslMode: PostgresSSLPrefer,
+        // NOTE: I'd rather this was prefer but lib/pq doesn't currently
+        //       support allow or prefer. See:
+        //       https://github.com/lib/pq/issues/776
+        sslMode: PostgresSSLRequire,
     },
 }
 

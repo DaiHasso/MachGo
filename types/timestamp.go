@@ -33,7 +33,7 @@ func (t *Timestamp) UnmarshalJSON(source []byte) error {
 }
 
 // Value gets the value of a Timestamp for writing to the DB.
-func (t *Timestamp) Value() (driver.Value, error) {
+func (t Timestamp) Value() (driver.Value, error) {
     return t.Time, nil
 }
 

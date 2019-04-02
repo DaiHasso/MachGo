@@ -3,6 +3,7 @@ module github.com/daihasso/machgo
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.0
 	github.com/cespare/xxhash v1.1.0
+	github.com/daihasso/beagle v0.0.3
 	github.com/daihasso/slogging v1.0.1
 	github.com/go-errors/errors v1.0.1
 	github.com/go-sql-driver/mysql v1.4.0

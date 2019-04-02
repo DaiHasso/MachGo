@@ -13,12 +13,16 @@ import (
 var deleteObjectStatementTemplate = `DELETE FROM %s WHERE %s`
 
 func deleteObject(object base.Base, session *Session) error {
-    identifier := identifierFromBase(object)
-    if !identifier.exists {
+    identifiers := base.GetId(object)
+    if len(identifiers) > 1 {
+        return errors.New("Can't use delete with a composite object")
+    }
+    identifier := identifiers[0]
+    if !identifier.Exists {
         return errors.New(
             "Object provided to DeleteObject doesn't have an identifier.",
         )
-    } else if !identifier.isSet {
+    } else if !identifier.IsSet {
         return errors.New(
             "Object provided to DeleteObject has an identifier but it " +
                 "hasn't been set.",
@@ -32,7 +36,7 @@ func deleteObject(object base.Base, session *Session) error {
     }
 
     // TODO: Support composites.
-    idValue := sql.Named(idColumn, identifier.value)
+    idValue := sql.Named(idColumn, identifier.Value)
 
     whereClause := fmt.Sprintf("%s = @%s", idColumn, idColumn)
 
@@ -60,7 +64,7 @@ func deleteObject(object base.Base, session *Session) error {
 }
 
 func deleteObjects(
-    args []ObjectOrOption, session *Session,
+    args []ObjectsOrOptions, session *Session,
 ) []error {
     // NOTE: Originally this went through all the objects and constructed one
     //       insert with multiple values but that presented problems with
@@ -101,7 +105,7 @@ func DeleteObject(object base.Base) error {
 
 // DeleteObjects deletes the objects provided from the DB using a new session
 // from the global connection pool.
-func DeleteObjects(args ...ObjectOrOption) []error {
+func DeleteObjects(args ...ObjectsOrOptions) []error {
     session, err := NewSessionFromGlobal()
     if err != nil {
         return []error{

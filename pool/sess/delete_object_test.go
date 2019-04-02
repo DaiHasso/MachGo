@@ -119,7 +119,7 @@ var _ = Describe("DeleteObject", func() {
                     sqlmock.NewResult(object2ID, 1),
             )
             mock.ExpectCommit()
-            errs := DeleteObjects(&object, &object2)
+            errs := DeleteObjects(Objs(&object, &object2))
             Expect(errs).To(BeEmpty())
         })
     })

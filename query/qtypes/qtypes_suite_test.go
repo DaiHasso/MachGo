@@ -1,4 +1,4 @@
-package base_test
+package qtypes
 
 import (
     "testing"
@@ -8,9 +8,9 @@ import (
     "github.com/daihasso/slogging"
 )
 
-func TestDsl(t *testing.T) {
+func TestQtypes(t *testing.T) {
     RegisterFailHandler(Fail)
-    RunSpecs(t, "Base Package Suite")
+    RunSpecs(t, "Qtypes Suite")
 }
 
 var _ = BeforeSuite(func() {

@@ -11,19 +11,18 @@ import (
 type QueryParts struct {
     Bindvars,
     ColumnNames []string
-    VariableValues []interface{}
-}
-
-func (self *QueryParts) AddBindvar(bindvars ...string) {
-    self.Bindvars = append(self.Bindvars, bindvars...)
+    VariableValueMap map[string]interface{}
 }
 
 func (self *QueryParts) AddColumnName(columnNames ...string) {
     self.ColumnNames = append(self.ColumnNames, columnNames...)
 }
 
-func (self *QueryParts) AddValue(values ...interface{}) {
-    self.VariableValues = append(self.VariableValues, values...)
+func (self *QueryParts) AddValue(values ...sql.NamedArg) {
+    for _, value := range values {
+        self.VariableValueMap[value.Name] = value
+        self.Bindvars = append(self.Bindvars, fmt.Sprintf(":%s", value.Name))
+    }
 }
 
 func (self QueryParts) AsInsert() string {
@@ -50,7 +49,9 @@ type ColumnFilter func(string, *sql.NamedArg) bool
 func QueryPartsFromObject(
     object base.Base, filters ...ColumnFilter,
 ) QueryParts {
-    queryParts := new(QueryParts)
+    queryParts := &QueryParts{
+        VariableValueMap: make(map[string]interface{}),
+    }
     processSortedNamedValues(
         object, func(columnName string, namedArg *sql.NamedArg) {
             for _, filter := range filters {
@@ -60,7 +61,6 @@ func QueryPartsFromObject(
             }
 
             queryParts.AddColumnName(columnName)
-            queryParts.AddBindvar("@" + columnName)
             queryParts.AddValue(*namedArg)
         },
     )

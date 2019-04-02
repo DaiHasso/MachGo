@@ -1,6 +1,7 @@
 package sess
 
 import (
+    "github.com/daihasso/machgo/base"
 )
 
 type actionOptions struct {
@@ -9,8 +10,18 @@ type actionOptions struct {
 
 type actionOption func(*actionOptions)
 
-var StopOnFailure = func(ops *actionOptions) {
-    ops.stopOnFailure = true
+var StopOnFailure = func() ([]actionOption, []base.Base) {
+    return []actionOption{
+        func(ops *actionOptions) {
+            ops.stopOnFailure = true
+        },
+    }, nil
 }
 
-type ObjectOrOption interface{}
+func Objs(objs ...base.Base) ObjectsOrOptions {
+    return func() ([]actionOption, []base.Base) {
+        return nil, objs
+    }
+}
+
+type ObjectsOrOptions func() ([]actionOption, []base.Base)

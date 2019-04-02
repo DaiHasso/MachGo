@@ -4,6 +4,8 @@ github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
+github.com/daihasso/beagle v0.0.3 h1:lYIvkQ8r3006HOMoo7XiWWiCKu3RyDBqbnCdH4lrE1g=
+github.com/daihasso/beagle v0.0.3/go.mod h1:YriSpzRtRAG7WbDzDz2yQ7olg5mvrKkCY+RJ6R1M4ic=
 github.com/daihasso/slogging v1.0.1 h1:O1x8RJ+m7GKFeOxYuPOYY8RkveSM9h8toSaMMKYEVl0=
 github.com/daihasso/slogging v1.0.1/go.mod h1:ZFYsvqiVuSjALLlFAwfBHcpApHbR81P/Ur8cmvAvahw=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=

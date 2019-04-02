@@ -486,7 +486,7 @@ var _ = Describe("SaveObjects", func() {
                     sqlmock.NewResult(object2ID, 1),
             )
             mock.ExpectCommit()
-            errs := SaveObjects(&object, &object2)
+            errs := SaveObjects(Objs(&object, &object2))
             Expect(errs).To(BeEmpty())
             Expect(Saved(&object)).To(BeTrue())
             Expect(Saved(&object2)).To(BeTrue())
@@ -526,7 +526,7 @@ var _ = Describe("SaveObjects", func() {
                     sqlmock.NewResult(objectID, 2),
             )
             mock.ExpectCommit()
-            errs := SaveObjects(&object, &object2)
+            errs := SaveObjects(Objs(&object, &object2))
             Expect(errs).To(BeEmpty())
             Expect(Saved(&object)).To(BeTrue())
             Expect(Saved(&object2)).To(BeTrue())
@@ -563,7 +563,7 @@ var _ = Describe("SaveObjects", func() {
                     sqlmock.NewResult(objectID, 2),
             )
             mock.ExpectCommit()
-            errs := SaveObjects(&object, &object2)
+            errs := SaveObjects(Objs(&object, &object2))
             Expect(errs).To(BeEmpty())
         })
 
@@ -606,7 +606,7 @@ var _ = Describe("SaveObjects", func() {
                     sqlmock.NewResult(object3ID, 2),
             )
             mock.ExpectCommit()
-            errs := SaveObjects(&object, &object2, &object3)
+            errs := SaveObjects(Objs(&object, &object2, &object3))
             Expect(errs).To(HaveLen(1))
             Expect(errs[0].Error()).To(MatchRegexp(expectedError.Error()))
             Expect(errs[0].Error()).To(MatchRegexp(

@@ -199,8 +199,14 @@ func GetGroupedFieldsWithBS(
 ) []*GroupedFieldsWithBS {
     v := reflect.ValueOf(in)
     for v.Kind() == reflect.Ptr {
-        in = reflect.Indirect(v).Interface()
-        v = reflect.ValueOf(in)
+        if v.IsNil() {
+            alloc := reflect.New(Deref(v.Type())).Interface()
+            v = reflect.ValueOf(alloc)
+        } else {
+            indir := reflect.Indirect(v)
+            in = indir.Interface()
+            v = reflect.ValueOf(in)
+        }
     }
 
     t := reflect.TypeOf(in)
@@ -286,8 +292,18 @@ func getAllTags(
     for curTagPart != "" {
         // Skip leading space.
         i := 0
-        for i < len(curTagPart) && curTagPart[i] == ' ' {
-            i++
+        for i < len(curTagPart) {
+            if curTagPart[i] == ' ' {
+                i++
+            } else if i + 1 < len(curTagPart) && curTagPart[i] == '\\' &&
+                (curTagPart[i+1] == '\r' || curTagPart[i+1] == '\n') {
+                // This allows us to insert line breaks with a backslash.
+                // Technically this doesn't meet golang tag spec but f**k that
+                // because long lines are dumb.
+                i+=2
+            } else {
+                break
+            }
         }
 
         curTagPart = curTagPart[i:]

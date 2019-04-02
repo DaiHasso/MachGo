@@ -1,8 +1,8 @@
-package base_test
+package query
 
 import (
     "testing"
-
+   
     . "github.com/onsi/ginkgo"
     . "github.com/onsi/gomega"
     "github.com/daihasso/slogging"
@@ -10,8 +10,9 @@ import (
 
 func TestDsl(t *testing.T) {
     RegisterFailHandler(Fail)
-    RunSpecs(t, "Base Package Suite")
+    RunSpecs(t, "Query Package Suite")
 }
+
 
 var _ = BeforeSuite(func() {
     logger, err := logging.NewLogger(

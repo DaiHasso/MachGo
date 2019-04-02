@@ -1,4 +1,5 @@
 package sess
+/*
 
 import (
     "reflect"
@@ -147,3 +148,5 @@ func initIdentifier(object base.Base) (*objectIdentifier, error) {
 
     return &identifier, nil
 }
+
+/**/

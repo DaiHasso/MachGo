@@ -10,7 +10,7 @@ func (self Session) SaveObject(object base.Base) error {
 }
 
 // SaveObjects saves the provided objects to the DB.
-func (self Session) SaveObjects(args ...ObjectOrOption) []error {
+func (self Session) SaveObjects(args ...ObjectsOrOptions) []error {
     return saveObjects(args, &self)
 }
 
@@ -30,6 +30,6 @@ func (self Session) DeleteObject(object base.Base) error {
 }
 
 // DeleteObjects deletes the objects provided from the DB.
-func (self Session) DeleteObjects(args ...ObjectOrOption) []error {
+func (self Session) DeleteObjects(args ...ObjectsOrOptions) []error {
     return deleteObjects(args, &self)
 }
