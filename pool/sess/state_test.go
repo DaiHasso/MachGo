@@ -2,7 +2,6 @@ package sess_test
 
 import (
     "database/sql"
-    "fmt"
     "math/rand"
 
     . "github.com/onsi/ginkgo"
@@ -10,7 +9,7 @@ import (
     "github.com/DATA-DOG/go-sqlmock"
     "github.com/jmoiron/sqlx"
 
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
     "github.com/daihasso/machgo/pool"
     . "github.com/daihasso/machgo/pool/sess"
 )
@@ -49,7 +48,7 @@ var _ = Describe("Global Session State", func() {
         It("Should detect a changed object", func() {
             objectID := rand.Int63()
             expectedQ := `INSERT INTO test_objects \(id, name\) ` +
-                `VALUES \(@id, @name\)`
+                `VALUES \(\?, \?\)`
             object := testObject{
                 Id: objectID,
                 Name: "foo",
@@ -84,35 +83,15 @@ var _ = Describe("Global Session State", func() {
         It("Should error when checking if an object without an identifier " +
             "has changed", func() {
 
-            ch := make(chan bool, 2)
-            go func() {
-                defer func() {
-                    if r := recover(); r != nil {
-                        fmt.Fprintf(
-                            GinkgoWriter,
-                            "Panic while checking if object changed: %s",
-                            fmt.Sprint(r),
-                        )
-                        Expect(fmt.Sprint(r)).To(Equal(
-                            "Object provided did not have an identifier.",
-                        ))
-                        ch <- true
-                    } else {
-                        ch <- false
-                    }
-                }()
-                object := struct{
-                    Name string
-                }{
-                    Name: "test",
-                }
+            object := struct{
+                Name string
+            }{
+                Name: "test",
+            }
+            checkObjectChanged := func () {
                 ObjectChanged(&object)
-            }()
-
-            paniced := <-ch
-            Expect(paniced).To(BeTrue())
-
-            close(ch)
+            }
+            Expect(checkObjectChanged).To(Panic())
         })
     })
 })

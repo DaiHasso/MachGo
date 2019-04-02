@@ -9,7 +9,7 @@ import (
     "github.com/DATA-DOG/go-sqlmock"
     "github.com/jmoiron/sqlx"
 
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
     "github.com/daihasso/machgo/pool"
     . "github.com/daihasso/machgo/pool/sess"
 )
@@ -47,8 +47,8 @@ var _ = Describe("UpdateObject", func() {
 
         It("Should be able to update a simple object", func() {
             objectID := rand.Int63()
-            expectedQ := `UPDATE test_objects SET id = @id, name = @name ` +
-                `WHERE id = @identifier`
+            expectedQ := `UPDATE test_objects SET id = \?, name = \? ` +
+                `WHERE \(id = \?\)`
             object := testObject{
                 Id: objectID,
                 Name: "foo",

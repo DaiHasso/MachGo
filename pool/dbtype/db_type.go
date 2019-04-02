@@ -6,14 +6,13 @@ import (
 )
 
 // Type describes a type of database.
-//go:generate stringer -type=Type
-type Type int
+type Type string
 
 // Definitions of different database types.
 const (
-    UnsetDatabaseType Type = iota
-    Mysql
-    Postgres
+    UnsetDatabaseType Type = ""
+    Mysql Type = "mysql"
+    Postgres Type = "postgres"
 )
 
 // TypeFromString will take a string representation of a database type
@@ -25,17 +24,6 @@ func TypeFromString(typeString string) (Type, error) {
     case "postgres", "pgsql", "psql":
         return Postgres, nil
     default:
-        return 0, fmt.Errorf("Unknown database type '%s'", typeString)
-    }
-}
-
-func (self Type) String() string {
-    switch(self) {
-    case Mysql:
-        return "mysql"
-    case Postgres:
-        return "postgres"
-    default:
-        return "unknown"
+        return "", fmt.Errorf("Unknown database type '%s'", typeString)
     }
 }

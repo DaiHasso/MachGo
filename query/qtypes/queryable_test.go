@@ -42,7 +42,7 @@ var _ = Describe("Queryable", func() {
         })
         Describe("ConstantQueryable", func() {
             It("should provide collision-free value", func() {
-                expectedQueryString := "@const_3394943692176117195"
+                expectedQueryString := ":const_3394943692176117195"
                 q := InterfaceToQueryable(5)
 
                 queryString, namedArgs := q.QueryValue(aliasedTables)
@@ -58,7 +58,7 @@ var _ = Describe("Queryable", func() {
                 expectedName := "const_3394943692176117195"
                 expectedName2 := "const_5834364151111774219"
                 expectedQueryString := fmt.Sprintf(
-                    "(@%s, @%s)", expectedName, expectedName2,
+                    "(:%s, :%s)", expectedName, expectedName2,
                 )
                 q := ConstantQueryable{
                     Values: []interface{}{5, 6},

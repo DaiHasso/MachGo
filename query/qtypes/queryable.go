@@ -70,7 +70,7 @@ func (self ConstantQueryable) QueryValue(
         randomNumber := rand.Int()
         argName := fmt.Sprintf("const_%d", randomNumber)
         namedArg := sql.Named(argName, value)
-        argStrings[i] = fmt.Sprintf("@%s", argName)
+        argStrings[i] = fmt.Sprintf(":%s", argName)
         args[i] = namedArg
     }
 

@@ -1,15 +1,8 @@
 package config
 
 import (
-    "github.com/daihasso/machgo/database"
-    "github.com/daihasso/machgo/pool"
-
     "fmt"
     "math"
-    "strings"
-
-    logging "github.com/daihasso/slogging"
-    "github.com/pkg/errors"
 )
 
 var postgresAddressTemplate = "dbname='%s' user='%s' host='%s' port='%d' " +
@@ -46,35 +39,4 @@ func PostgresConnStringFromConfig(config Config) string {
     }
 
     return connectionString
-}
-
-func NewPostgresPool(config Config) (*pool.ConnectionPool, error) {
-    connectionString := PostgresConnStringFromConfig(
-        config,
-    )
-
-    cleanedConnString := connectionString
-    if config.password != "" {
-        cleanedConnString = strings.Replace(
-            connectionString, config.password, "[omitted]", -1,
-        )
-    }
-
-    logging.Debug(
-        "Creating pool connection to postgres database.",
-        logging.Extras{
-            "connection_string": cleanedConnString,
-        },
-    )
-
-    dbPool, err := database.PostgresConnection(connectionString)
-    if err != nil {
-        return nil, errors.Wrap(err, "Error while creating postgres pool")
-    }
-
-    connPool := &pool.ConnectionPool{
-        DB: *dbPool,
-    }
-
-    return connPool, err
 }

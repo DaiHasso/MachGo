@@ -110,7 +110,7 @@ var _ = Describe("Combiner", func() {
                 expectedVar1Name := "const_3394943692176117195"
                 expectedVar2Name := "const_5834364151111774219"
                 expectedQueryString := fmt.Sprintf(
-                    "(@%s = @%s)", expectedVar1Name, expectedVar2Name,
+                    "(:%s = :%s)", expectedVar1Name, expectedVar2Name,
                 )
 
                 condition := NewDefaultCondition(
@@ -136,7 +136,7 @@ var _ = Describe("Combiner", func() {
                 expectedVar1Name := "const_3394943692176117195"
                 expectedVar2Name := "const_5834364151111774219"
                 expectedQueryString := fmt.Sprintf(
-                    "(@%s = @%s)", expectedVar1Name, expectedVar2Name,
+                    "(:%s = :%s)", expectedVar1Name, expectedVar2Name,
                 )
 
                 condition := NewDefaultCondition(
@@ -163,7 +163,7 @@ var _ = Describe("Combiner", func() {
                     var1Name := "const_3394943692176117195"
                     var2Name := "const_5834364151111774219"
                     expectedString := fmt.Sprintf(
-                        `(foo = @%s) OR (bar = @%s)`, var1Name, var2Name,
+                        `(foo = :%s) OR (bar = :%s)`, var1Name, var2Name,
                     )
                     columnQueryable := ColumnQueryable{
                         ColumnName: "foo",

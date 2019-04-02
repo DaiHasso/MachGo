@@ -4,7 +4,6 @@ import (
     "github.com/daihasso/machgo/base"
     "github.com/daihasso/machgo/pool"
     "github.com/daihasso/machgo/query"
-    "github.com/daihasso/machgo/database"
 )
 
 // Session is a helper wrapper for a connection pool that has common helper
@@ -19,10 +18,6 @@ func (self Session) Query(objects ...base.Base) *query.Query {
         q.Join(objects...)
     }
     return q
-}
-
-func (self Session) Manager() (*database.Manager, error) {
-    return database.NewManagerFromPool(self.Pool)
 }
 
 func NewSessionFromGlobal() (*Session, error) {

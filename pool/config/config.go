@@ -1,7 +1,7 @@
 package config
 
 import (
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
     "github.com/daihasso/machgo/pool"
 
     "time"

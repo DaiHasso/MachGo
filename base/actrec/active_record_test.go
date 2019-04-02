@@ -10,7 +10,7 @@ import (
     "github.com/DATA-DOG/go-sqlmock"
     "github.com/jmoiron/sqlx"
 
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
     "github.com/daihasso/machgo/pool"
     "github.com/daihasso/machgo/pool/sess"
 )
@@ -93,7 +93,7 @@ var _ = Describe("ActiveRecordLinker", func() {
         It("should be able to save", func() {
             objectID := rand.Int63()
             expectedQ := `INSERT INTO ar_test_objects \(id, name\) ` +
-                `VALUES \(@id, @name\)`
+                `VALUES \(\?, \?\)`
 
             object.Id = objectID
             object.Name = "foo"
@@ -112,7 +112,7 @@ var _ = Describe("ActiveRecordLinker", func() {
         It("should be able to save", func() {
             objectID := rand.Int63()
             expectedQ := `INSERT INTO ar_test_objects \(id, name\) ` +
-                `VALUES \(@id, @name\)`
+                `VALUES \(\?, \?\)`
 
             object.Id = objectID
             object.Name = "foo"

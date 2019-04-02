@@ -11,7 +11,7 @@ import (
     "github.com/jmoiron/sqlx"
 
     "github.com/daihasso/machgo/pool"
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
     qt "github.com/daihasso/machgo/query/qtypes"
     "github.com/daihasso/machgo/base"
 )
@@ -73,7 +73,7 @@ var _ = Describe("Query", func() {
             expectedQuery := `query: '` +
                 `SELECT a.id as a_id, a.name as a_name ` +
                 `FROM test_objects a ` +
-                `WHERE (a.id = @const_4639577150595001395)', ` +
+                `WHERE (a.id = :const_4639577150595001395)', ` +
                 `args: (const_4639577150595001395: 55)`
            
             object := &testObject{
@@ -97,7 +97,7 @@ var _ = Describe("Query", func() {
             expectedQuery := `query: 'SELECT a.id as a_id, a.name as a_name ` +
                 `FROM second_test_objects b ` +
                 `JOIN test_objects a ON b.id=a.id ` +
-                `WHERE (a.id = @const_4639577150595001395)', ` +
+                `WHERE (a.id = :const_4639577150595001395)', ` +
                 `args: (const_4639577150595001395: 55)`
 
             object := &testObject{}
@@ -119,7 +119,7 @@ var _ = Describe("Query", func() {
         It("should be able to add a limit", func() {
             expectedQuery := `query: 'SELECT a.id as a_id, a.name as a_name ` +
                 `FROM test_objects a ` +
-                `WHERE (a.id = @const_4639577150595001395) LIMIT 10', ` +
+                `WHERE (a.id = :const_4639577150595001395) LIMIT 10', ` +
                 `args: (const_4639577150595001395: 55)`
 
             object := (*testObject)(nil)
@@ -139,7 +139,7 @@ var _ = Describe("Query", func() {
         It("should be able to add an offset", func() {
             expectedQuery := `query: 'SELECT a.id as a_id, a.name as a_name ` +
                 `FROM test_objects a ` +
-                `WHERE (a.id = @const_4639577150595001395) OFFSET 10', ` +
+                `WHERE (a.id = :const_4639577150595001395) OFFSET 10', ` +
                 `args: (const_4639577150595001395: 55)`
 
             object := (*testObject)(nil)
@@ -159,7 +159,7 @@ var _ = Describe("Query", func() {
         It("should be able to add an order by clause", func() {
             expectedQuery := `query: 'SELECT a.id as a_id, a.name as a_name ` +
                 `FROM test_objects a ` +
-                `WHERE (a.id = @const_4639577150595001395) ` +
+                `WHERE (a.id = :const_4639577150595001395) ` +
                 `ORDER BY a.name', ` +
                 `args: (const_4639577150595001395: 55)`
 

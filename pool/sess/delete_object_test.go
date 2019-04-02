@@ -9,7 +9,7 @@ import (
     "github.com/DATA-DOG/go-sqlmock"
     "github.com/jmoiron/sqlx"
 
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
     "github.com/daihasso/machgo/pool"
     . "github.com/daihasso/machgo/pool/sess"
 )

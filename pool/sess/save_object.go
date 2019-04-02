@@ -10,7 +10,7 @@ import (
     "github.com/pkg/errors"
 
     "github.com/daihasso/machgo/base"
-    "github.com/daihasso/machgo/database/dbtype"
+    "github.com/daihasso/machgo/pool/dbtype"
 )
 
 var saveObjectStatementTemplate = `INSERT INTO %s %s`

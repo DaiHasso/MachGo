@@ -4,7 +4,6 @@ import (
     "fmt"
     "sync"
 
-    logging "github.com/daihasso/slogging"
     "github.com/pkg/errors"
 
     "github.com/daihasso/machgo/base"
@@ -28,7 +27,7 @@ func setObjectSaved(object base.Base) error {
 
     hash, err := base.HashObject(object)
     if err != nil {
-        logging.Warn("Error hashing object.")
+        return err
     }
     objectSavedHash[hashKey] = hash
 

@@ -34,6 +34,6 @@ func (self PostgresSSLMode) String() string {
         case PostgresSSLVerifyFull:
         return "verify-full"
         default:
-        panic(errors.Errorf("Unknown SSLMode '%s'.", self))
+        panic(errors.Errorf("Unknown SSLMode '%d'.", self))
     }
 }
