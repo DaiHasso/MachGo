@@ -45,8 +45,26 @@ func (self OrderByOption) QueryValue(
     return self.fmtString(orderStr), orderVals
 }
 
+// AddStatements appends to an OrderByOption.
+func(self *OrderByOption) AddStatements(statements ...Queryable) {
+    if multiCondition, ok := self.Order.(MultiCondition); ok {
+        if multiCondition.Combiner == CommaCombiner {
+            multiCondition.Values = append(
+                multiCondition.Values, statements...,
+            )
+
+            self.Order = multiCondition
+            return
+        }
+    }
+
+    allStatements := append([]Queryable{self.Order}, statements...)
+    self.Order = NewMultiListCondition(allStatements...)
+}
+
+// LimitOption is sets a limit to the query.
 type LimitOption struct {
-    Limit int64
+    Limit int
 }
 
 func (self LimitOption) fmtString() string {
@@ -65,8 +83,9 @@ func (self LimitOption) QueryValue(at *AliasedTables) (string, []interface{}) {
     return self.fmtString(), nil
 }
 
+// OffsetOption sets an offset to the query.
 type OffsetOption struct {
-    Offset int64
+    Offset int
 }
 
 func (self OffsetOption) fmtString() string {

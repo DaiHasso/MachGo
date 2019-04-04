@@ -15,6 +15,10 @@ import (
     "github.com/daihasso/machgo/base"
 )
 
+// Query represents an in-flight query that is being built as before actually
+// making the request to the DB. It's purpose is to facillitate a more
+// straightforward interaction with the DB for general purpose usage to avoid
+// having to write direct SQL.
 type Query struct {
     Pool *pool.ConnectionPool
     Tables *qtypes.AliasedTables
@@ -58,6 +62,8 @@ func (self *Query) cacheTagsForType(objects []base.Base) {
     }
 }
 
+// Join adds an object to the query. The joined object should have a
+// Relationship with at least one other object already in the Query.
 func (self *Query) Join(objects ...base.Base) *Query {
     err := self.addObjects(objects)
     if err != nil {
@@ -68,14 +74,17 @@ func (self *Query) Join(objects ...base.Base) *Query {
     return self
 }
 
+// Where creates or appends to the where clause the provided clauses.
 func (self *Query) Where(clauses ...qtypes.Queryable) *Query {
     self.WhereClauses = append(self.WhereClauses, clauses...)
 
     return self
 }
 
+// Select sets the selected data for the Query. Repeated calls to this
+// function will Override the existing select clause.
 func (self *Query) Select(stmnts ...qtypes.Selectable) *Query {
-    // NOTE: We nuke existing select expression effectively ovewriting each
+    // NOTE: We nuke existing select expression effectively overwriting each
     //       time this is called.
     var selectExpressions []qtypes.SelectExpression
     for _, statement := range stmnts {
@@ -92,7 +101,8 @@ func (self *Query) Select(stmnts ...qtypes.Selectable) *Query {
     return self
 }
 
-func (self *Query) Limit(limit int64) *Query {
+// Limit sets a limit to the total returned items for the query.
+func (self *Query) Limit(limit int) *Query {
     limitOption := qtypes.LimitOption{
         Limit: limit,
     }
@@ -108,7 +118,8 @@ func (self *Query) Limit(limit int64) *Query {
     return self
 }
 
-func (self *Query) Offset(offset int64) *Query {
+// Offset sets an offset from the first item returned in the query.
+func (self *Query) Offset(offset int) *Query {
     offsetOption := qtypes.OffsetOption{
         Offset: offset,
     }
@@ -124,15 +135,23 @@ func (self *Query) Offset(offset int64) *Query {
     return self
 }
 
-func (self *Query) OrderBy(order qtypes.Queryable) *Query {
-    orderOption := qtypes.OrderByOption{
-        Order: order,
-    }
+// OrderBy adds an ordering to the query. Repeated calls to this function will
+// append to the existing ordering.
+func (self *Query) OrderBy(orderStatements ...qtypes.Queryable) *Query {
     for i, optionClause := range self.OptionClauses {
         if optionClause.OptionType() == qtypes.OrderByOptionType {
+            // If it's not the first call to order by add this order as a
+            // new statement in the order clause. This behaviour is unique
+            // to this option.
+            orderOption := (self.OptionClauses[i]).(qtypes.OrderByOption)
+            orderOption.AddStatements(orderStatements...)
             self.OptionClauses[i] = orderOption
             return self
         }
+    }
+
+    orderOption := qtypes.OrderByOption{
+        Order: qtypes.NewMultiListCondition(orderStatements...),
     }
 
     self.OptionClauses = append(self.OptionClauses, orderOption)
@@ -140,10 +159,18 @@ func (self *Query) OrderBy(order qtypes.Queryable) *Query {
     return self
 }
 
-func (self *Query) Order(order qtypes.Queryable) *Query {
-    return self.OrderBy(order)
+// Order is a convenience wrapper for OrderBy.
+func (self *Query) Order(order ...qtypes.Queryable) *Query {
+    return self.OrderBy(order...)
 }
 
+// String wraps the PrintQuery method so that auto-stringing prints the
+// resulting query itself instead of the object.
+func (self Query) String() string {
+    return self.PrintQuery()
+}
+
+// PrintQuery prints what query will be made when the query is called.
 func (self Query) PrintQuery() string {
     if len(self.Errors) != 0 {
         return fmt.Sprintf(
@@ -182,6 +209,8 @@ func (self Query) PrintQuery() string {
     return queryString
 }
 
+// Results returns the query as a QueryResults object that can be used to read
+// data out of the database in a convenient fashion.
 func (self Query) Results() (*qtypes.QueryResults, error) {
     if len(self.Errors) != 0 {
         return nil, errors.Errorf(
@@ -204,7 +233,14 @@ func (self Query) Results() (*qtypes.QueryResults, error) {
 
     query = self.Pool.Rebind(query)
 
-    rows, err := tx.Queryx(query, variables...)
+    variableMap := make(map[string]interface{}, len(variables))
+    for _, variable := range variables {
+        if namedVar, ok := variable.(sql.NamedArg); ok {
+            variableMap[namedVar.Name] = namedVar.Value
+        }
+    }
+
+    rows, err := tx.NamedQuery(query, variableMap)
     if err != nil {
         newErr := tx.Rollback()
         if newErr != nil {
@@ -217,6 +253,94 @@ func (self Query) Results() (*qtypes.QueryResults, error) {
     return qtypes.NewQueryResults(
         tx, rows, self.Tables, self.typeBSFieldMap,
     ), nil
+}
+
+// Count makes a call to the db to get the total count that would be returned
+// from the query without any extra QueryOptions (limit, offset, etc).
+func (self Query) Count() (count int, err error) {
+    if len(self.Errors) != 0 {
+        return -1, errors.Errorf(
+            "Errors while forming query:\n%#+v",
+            self.Errors,
+        )
+    }
+
+    starLiteral := qtypes.LiteralQueryable{
+        Value: "*",
+    }
+    selectFunc := qtypes.SelectCount{
+        Expression: starLiteral,
+    }
+    selectString, args := selectFunc.QueryValue(self.Tables)
+
+    fromString, err := self.buildFrom()
+    if err != nil {
+        return -1, errors.Wrap(err, "Error while building from clause")
+    }
+
+    // #nosec G201
+    query := fmt.Sprintf(
+        "SELECT %s FROM %s",
+        selectString,
+        fromString,
+    )
+
+    if len(self.WhereClauses) != 0 {
+        whereTemplate := `WHERE %s`
+        combinedWhere := qtypes.NewMultiAndCondition(self.WhereClauses...)
+        whereClause, whereArgs := combinedWhere.QueryValue(self.Tables)
+        args = append(args, whereArgs...)
+        query += " " + fmt.Sprintf(whereTemplate, whereClause)
+    }
+
+    tx, err := self.Pool.Beginx()
+    if err != nil {
+        return -1, err
+    }
+
+    query = self.Pool.Rebind(query)
+
+    variableMap := make(map[string]interface{}, len(args))
+    for _, variable := range args {
+        if namedVar, ok := variable.(sql.NamedArg); ok {
+            variableMap[namedVar.Name] = namedVar.Value
+        }
+    }
+
+    rows, err := tx.NamedQuery(query, variableMap)
+    if err != nil {
+        newErr := tx.Rollback()
+        if newErr != nil {
+            return -1, newErr
+        }
+
+        return -1, err
+    }
+
+    defer func() {
+        rows.Close()
+        if err != nil {
+            newErr := tx.Rollback()
+            if newErr != nil {
+                err = newErr
+            }
+            return
+        }
+
+        err = tx.Commit()
+        if err != nil {
+            newErr := tx.Rollback()
+            if newErr != nil {
+                err = newErr
+            }
+        }
+    }()
+
+    if rows.Next() {
+        err = rows.Scan(&count)
+    }
+
+    return count, nil
 }
 
 
@@ -535,6 +659,7 @@ func findRelationshipBetweenObjects(object1, object2 base.Base) (
     )
 }
 
+// NewQuery returns a new Query object attached to a specified pool.
 func NewQuery(pool *pool.ConnectionPool) *Query {
     aliasedTables, _ := qtypes.NewAliasedTables()
     return &Query{

@@ -7,6 +7,7 @@ import (
     "github.com/pkg/errors"
 )
 
+// Combiner is some symbol that combines multiple items in SQL.
 type Combiner int
 
 const (
@@ -52,6 +53,7 @@ func (self Combiner) String() string {
     panic(errors.Errorf("Unknown combiner %#+v!", self))
 }
 
+// Join uses this combiner to join together a series of strings.
 func (self Combiner) Join(parts ...string) string {
     var combinerString string
 

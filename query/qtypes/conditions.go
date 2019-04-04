@@ -5,6 +5,7 @@ import (
 )
 
 type queryableValuer func(Queryable) (string, []interface{})
+
 var aliasedTablesValuer = func(at *AliasedTables) queryableValuer {
     return func(q Queryable) (string, []interface{}) {
         return q.QueryValue(at)
@@ -14,11 +15,15 @@ var stringValuer = func(q Queryable) (string, []interface{}) {
     return q.String(), nil
 }
 
+// ConditionEvaluator is a function that takes two queryables and runs a
+// transformation function (queryableValuer) on them to return their string
+// representation and any values associated.
 type ConditionEvaluator func(
     queryableValuer, Queryable, Queryable,
 ) (string, []interface{})
 
 
+// NewDefaultEvaluator returns the standard evaluator.
 func NewDefaultEvaluator(
     combiner Combiner, valueModifiers ...ValueModifier,
 ) ConditionEvaluator {
@@ -42,6 +47,8 @@ func NewDefaultEvaluator(
     }
 }
 
+// DefaultCondition represents a standard condition that just combines on
+// lefthand set of values with a righthand set of values.
 type DefaultCondition struct {
     LHValues,
     RHValues Queryable
@@ -65,6 +72,8 @@ func (self DefaultCondition) String() string {
     return queryString
 }
 
+// NewDefaultCondition creates a new default condition combining the values
+// provided via the combiner provided.
 func NewDefaultCondition(
     LHValues, RHValues Queryable, combiner Combiner,
 ) Queryable {
@@ -81,6 +90,8 @@ func NewDefaultCondition(
     }
 }
 
+// MultiCondition combines multiple values in a serial fashion using the
+// provided Combiner.
 type MultiCondition struct {
     Values []Queryable
     Combiner Combiner
@@ -114,6 +125,7 @@ func (self MultiCondition) String() string {
     return finalQueryString
 }
 
+// NotCondition creates a sql NOT on the provided statment.
 type NotCondition struct {
     Value Queryable
 }
@@ -136,6 +148,8 @@ func (self NotCondition) String() string {
     return queryString
 }
 
+// NewMultiOrCondition takes the provided values and combines them in the
+// fashion of `a=5 OR c=1`
 func NewMultiOrCondition(values ...Queryable) Queryable {
     return MultiCondition{
         Values: values,
@@ -143,6 +157,8 @@ func NewMultiOrCondition(values ...Queryable) Queryable {
     }
 }
 
+// NewMultiAndCondition takes the provided values and combines them in the
+// fashion of `a=5 AND c=1`
 func NewMultiAndCondition(values ...Queryable) Queryable {
     return MultiCondition{
         Values: values,
@@ -150,6 +166,8 @@ func NewMultiAndCondition(values ...Queryable) Queryable {
     }
 }
 
+// NewMultiListCondition takes the provided values and combines them in the
+// fashion of `a=5, c=1`
 func NewMultiListCondition(values ...Queryable) Queryable {
     return MultiCondition{
         Values: values,

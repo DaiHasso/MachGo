@@ -7,6 +7,8 @@ import (
 
 var columnAliasStringRegex = regexp.MustCompile(`^([^_]+)_(.*)$`)
 
+// ColumnAlias is a table's alias paired with a column in a standardized
+// format.
 type ColumnAlias struct {
     TableAlias,
     ColumnName string
@@ -21,6 +23,8 @@ func (self ColumnAlias) String() string {
     return fmt.Sprintf("%s_%s", self.TableAlias, self.ColumnName)
 }
 
+// ColumnAliasForString splits a string in the format of alias_column into a
+// ColumnAlias type.
 func ColumnAliasFromString(rawColumn string) (*ColumnAlias, bool) {
     if !columnAliasStringRegex.MatchString(rawColumn) {
         return nil, false

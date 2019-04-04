@@ -4,6 +4,8 @@ import (
     "fmt"
 )
 
+// ValueModifier takes two statements represented by strings and does some
+// mutations on them returning the mutated results.
 type ValueModifier func(string, string) (string, string)
 
 func maybeParen(s string) string {

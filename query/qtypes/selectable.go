@@ -8,8 +8,10 @@ import (
     "github.com/daihasso/machgo/base"
 )
 
+// Selectable is a thing which provides a SelectExpression (and maybe an error)
 type Selectable func() (SelectExpression, error)
 
+// BaseSelectable takes a base an provides a Selectable from it.
 func BaseSelectable(obj base.Base) Selectable {
     return func() (SelectExpression, error) {
         tableName, err := base.BaseTable(obj)
@@ -22,6 +24,8 @@ func BaseSelectable(obj base.Base) Selectable {
     }
 }
 
+// LiteralSelectable takes the exact string and creates a select expression
+// from it.
 func LiteralSelectable(exp string) Selectable {
     return func() (SelectExpression, error) {
         return NewSelectExpression(exp), nil

@@ -14,6 +14,8 @@ import (
 const tableAliasAlphabet = "abcdefghijklmnopqrstuvwxyz"+
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+// AliasedTables is a representation that makes dealing with table, object, and
+// alias mappings easier.
 type AliasedTables struct {
     aliasTable map[string]string
     tableAlias map[string]string
@@ -22,6 +24,7 @@ type AliasedTables struct {
     aliasCounter int
 }
 
+// Aliases returns all the aliases that this AliasedTables knows.
 func (self AliasedTables) Aliases() []string {
     var aliases []string
     for alias, _ := range self.aliasTable {
@@ -31,25 +34,31 @@ func (self AliasedTables) Aliases() []string {
     return aliases
 }
 
+// TypeForAlias retrieves the type associated with the provided table alias.
 func (self AliasedTables) TypeForAlias(alias string) *reflect.Type {
     tableName := self.aliasTable[alias]
     return self.tableType[tableName]
 }
 
+// TypeForTable retrieves the type associated with the provided table name.
 func (self AliasedTables) TypeForTable(tableName string) *reflect.Type {
     return self.tableType[tableName]
 }
 
+// TableForAlias retrieves the table associated with the provided table alias.
 func (self AliasedTables) TableForAlias(alias string) string {
     tableName := self.aliasTable[alias]
     return tableName
 }
 
+// AliasForTable retrieves the alias associated with the provided table name.
 func (self AliasedTables) AliasForTable(tableName string) (string, bool) {
     alias, ok := self.tableAlias[tableName]
     return alias, ok
 }
 
+// ObjectIsAliased checks if the provided object's type has been aliased in
+// this AliasedTables.
 func (self AliasedTables) ObjectIsAliased(object base.Base) bool {
     tableName, err := base.BaseTable(object)
     if err != nil {
@@ -59,6 +68,7 @@ func (self AliasedTables) ObjectIsAliased(object base.Base) bool {
     return ok
 }
 
+// ObjectAlias returns the alias asociated with this object's type.
 func (self AliasedTables) ObjectAlias(object base.Base) (string, error) {
     tableName, err := base.BaseTable(object)
     if err != nil {
@@ -71,10 +81,13 @@ func (self AliasedTables) ObjectAlias(object base.Base) (string, error) {
     return val, nil
 }
 
+// TypeTable retrieves the table associate with the provided type.
 func (self AliasedTables) TypeTable(typ reflect.Type) string {
     return self.typeTable[typ]
 }
 
+// AddObjects adds the provided objects to the AliasedTables creating new
+// aliases and creating type and table mappings.
 func (self *AliasedTables) AddObjects(objects ...base.Base) error {
     for _, object := range objects {
         objType := reflect.TypeOf(object)
@@ -117,6 +130,8 @@ func (self *AliasedTables) AddObjects(objects ...base.Base) error {
     return nil
 }
 
+// NewAliasedTables creates a new AliasedTables mapping containing the provided
+// objects.
 func NewAliasedTables(objects ...base.Base) (*AliasedTables, error) {
     aliasedBases := AliasedTables{
         aliasTable: make(map[string]string, len(objects)),

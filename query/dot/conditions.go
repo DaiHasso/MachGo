@@ -77,6 +77,7 @@ func Not(ins ...interface{}) qtypes.Queryable {
 }
 
 // Short aliases.
+
 func Eq(lhs, rhs interface{}) qtypes.Queryable {
     return Equal(lhs, rhs)
 }

@@ -25,7 +25,9 @@ type QueryResult struct {
     closeAfterWrite bool
 }
 
-func (self QueryResult) WriteTo(objects ...interface{}) error {
+// WriteTo writes the result row into the provided objects automatically
+// determining which objects to write what data.
+func (self QueryResult) WriteTo(objects ...base.Base) error {
     aliasObjMap := make(AliasObjValMap, len(objects))
     for _, object := range objects {
         objValPtr := reflect.ValueOf(object)
@@ -58,6 +60,7 @@ func (self QueryResult) WriteTo(objects ...interface{}) error {
     return readRowIntoObjs(self.rows, aliasObjMap, self.columnAliasFields)
 }
 
+// Close closes this QueryResult's rows.
 func (self QueryResult) Close() error {
     err := self.rows.Close()
     if err != nil {
@@ -74,7 +77,14 @@ func readRowIntoObjs(
 ) error {
     values := make([]interface{}, len(columnAliasFields))
     for i, columnAliasField := range columnAliasFields {
-        objVal := aliasObjVals[columnAliasField.TableAlias]
+        objVal, ok := aliasObjVals[columnAliasField.TableAlias]
+        if !ok {
+            return errors.Errorf(
+                "Can't write to provided object(s), missing object with " +
+                    "column '%s'",
+                columnAliasField.ColumnName,
+            )
+        }
         field := objVal.Elem().FieldByName(columnAliasField.FieldName)
 
         if !field.IsValid() {
@@ -98,6 +108,7 @@ func readRowIntoObjs(
     return rows.Scan(values...)
 }
 
+// NewQueryResult creates a new QueryResult.
 func NewQueryResult(
     rows *sqlx.Rows,
     aliasedTables *AliasedTables,
