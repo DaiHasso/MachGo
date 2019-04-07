@@ -1,8 +1,9 @@
 package dbtype
 
 import (
-    "fmt"
     "strings"
+
+    "github.com/pkg/errors"
 )
 
 // Type describes a type of database.
@@ -24,6 +25,6 @@ func TypeFromString(typeString string) (Type, error) {
     case "postgres", "pgsql", "psql":
         return Postgres, nil
     default:
-        return "", fmt.Errorf("Unknown database type '%s'", typeString)
+        return "", errors.Errorf("Unknown database type '%s'", typeString)
     }
 }

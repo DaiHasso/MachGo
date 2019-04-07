@@ -15,6 +15,25 @@ import (
     "github.com/daihasso/machgo/base"
 )
 
+type queryValuePair struct {
+    query string
+    values []interface{}
+    valid bool
+}
+
+func (self *queryValuePair) invalidate() {
+    self.query = ""
+    self.values = nil
+    self.valid = false
+}
+
+type cachedQuery struct {
+    Select queryValuePair
+    From queryValuePair
+    Where queryValuePair
+    Options queryValuePair
+}
+
 // Query represents an in-flight query that is being built as before actually
 // making the request to the DB. It's purpose is to facillitate a more
 // straightforward interaction with the DB for general purpose usage to avoid
@@ -29,6 +48,8 @@ type Query struct {
     typeBSFieldMap,
     typeFieldNameBSFieldMap map[reflect.Type]*refl.GroupedFieldsWithBS
     joinedObjects []base.Base
+
+    cached cachedQuery
 
     Errors []error
 }
@@ -65,6 +86,9 @@ func (self *Query) cacheTagsForType(objects []base.Base) {
 // Join adds an object to the query. The joined object should have a
 // Relationship with at least one other object already in the Query.
 func (self *Query) Join(objects ...base.Base) *Query {
+    self.cached.Select.invalidate()
+    self.cached.From.invalidate()
+
     err := self.addObjects(objects)
     if err != nil {
         wrapped := errors.Wrap(err, "Error while adding objects to join")
@@ -76,6 +100,8 @@ func (self *Query) Join(objects ...base.Base) *Query {
 
 // Where creates or appends to the where clause the provided clauses.
 func (self *Query) Where(clauses ...qtypes.Queryable) *Query {
+    self.cached.Where.invalidate()
+
     self.WhereClauses = append(self.WhereClauses, clauses...)
 
     return self
@@ -84,6 +110,8 @@ func (self *Query) Where(clauses ...qtypes.Queryable) *Query {
 // Select sets the selected data for the Query. Repeated calls to this
 // function will Override the existing select clause.
 func (self *Query) Select(stmnts ...qtypes.Selectable) *Query {
+    self.cached.Select.invalidate()
+
     // NOTE: We nuke existing select expression effectively overwriting each
     //       time this is called.
     var selectExpressions []qtypes.SelectExpression
@@ -103,6 +131,8 @@ func (self *Query) Select(stmnts ...qtypes.Selectable) *Query {
 
 // Limit sets a limit to the total returned items for the query.
 func (self *Query) Limit(limit int) *Query {
+    self.cached.Options.invalidate()
+
     limitOption := qtypes.LimitOption{
         Limit: limit,
     }
@@ -120,6 +150,8 @@ func (self *Query) Limit(limit int) *Query {
 
 // Offset sets an offset from the first item returned in the query.
 func (self *Query) Offset(offset int) *Query {
+    self.cached.Options.invalidate()
+
     offsetOption := qtypes.OffsetOption{
         Offset: offset,
     }
@@ -138,6 +170,8 @@ func (self *Query) Offset(offset int) *Query {
 // OrderBy adds an ordering to the query. Repeated calls to this function will
 // append to the existing ordering.
 func (self *Query) OrderBy(orderStatements ...qtypes.Queryable) *Query {
+    self.cached.Options.invalidate()
+
     for i, optionClause := range self.OptionClauses {
         if optionClause.OptionType() == qtypes.OrderByOptionType {
             // If it's not the first call to order by add this order as a
@@ -285,13 +319,12 @@ func (self Query) Count() (count int, err error) {
         fromString,
     )
 
-    if len(self.WhereClauses) != 0 {
-        whereTemplate := `WHERE %s`
-        combinedWhere := qtypes.NewMultiAndCondition(self.WhereClauses...)
-        whereClause, whereArgs := combinedWhere.QueryValue(self.Tables)
+    whereQuery, whereArgs := self.buildWhere()
+    if whereQuery != "" {
+        query += " " + whereQuery
         args = append(args, whereArgs...)
-        query += " " + fmt.Sprintf(whereTemplate, whereClause)
     }
+
 
     tx, err := self.Pool.Beginx()
     if err != nil {
@@ -345,6 +378,10 @@ func (self Query) Count() (count int, err error) {
 
 
 func (self Query) buildSelect() (string, error) {
+    if self.cached.Select.valid {
+        return self.cached.Select.query, nil
+    }
+
     var selectString string
     if len(self.SelectExpressions) == 0 {
         allAliases := make([]string, 0)
@@ -402,10 +439,17 @@ func (self Query) buildSelect() (string, error) {
         selectString += line
     }
 
+    self.cached.Select.query = selectString
+    self.cached.Select.valid = true
+
     return selectString, nil
 }
 
 func (self Query) buildFrom() (string, error) {
+    if self.cached.From.valid {
+        return self.cached.From.query, nil
+    }
+
     var fromString string
     if len(self.joinedObjects) == 1 {
         // It's just a normal select with no join.
@@ -451,7 +495,62 @@ func (self Query) buildFrom() (string, error) {
         }
     }
 
+    self.cached.From.query = fromString
+    self.cached.From.valid = true
+
     return fromString, nil
+}
+
+func (self Query) buildWhere() (string, []interface{}) {
+    if self.cached.Where.valid {
+        return self.cached.Where.query, self.cached.Where.values
+    }
+
+    if len(self.WhereClauses) != 0 {
+        whereTemplate := `WHERE %s`
+        combinedWhere := qtypes.NewMultiAndCondition(self.WhereClauses...)
+        whereClause, whereArgs := combinedWhere.QueryValue(self.Tables)
+        whereString := fmt.Sprintf(whereTemplate, whereClause)
+
+        self.cached.Where.query = whereString
+        self.cached.Where.values = whereArgs
+        self.cached.Where.valid = true
+        return whereString, whereArgs
+    }
+
+    return "", nil
+}
+
+func (self Query) buildOptions() (string, []interface{}) {
+    if self.cached.Options.valid {
+        return self.cached.Options.query, self.cached.Options.values
+    }
+
+    var (
+        qStrings []string
+        args []interface{}
+    )
+    if len(self.OptionClauses) != 0 {
+        sort.SliceStable(self.OptionClauses, func(i int, j int) bool {
+            optTypeI := self.OptionClauses[i].OptionType()
+            optTypeJ := self.OptionClauses[j].OptionType()
+            return optTypeI < optTypeJ
+        })
+
+        for _, option := range(self.OptionClauses) {
+            qString, qVal := option.QueryValue(self.Tables)
+            qStrings = append(qStrings, qString)
+            args = append(args, qVal...)
+        }
+    }
+
+    optionQuery := strings.Join(qStrings, " ")
+
+    self.cached.Options.query = optionQuery
+    self.cached.Options.values = args
+    self.cached.Options.valid = true
+
+    return optionQuery, args
 }
 
 func (self Query) buildQuery() (string, []interface{}, error) {
@@ -472,27 +571,15 @@ func (self Query) buildQuery() (string, []interface{}, error) {
         fromString,
     )
 
-    args := make([]interface{}, 0)
-    if len(self.WhereClauses) != 0 {
-        whereTemplate := `WHERE %s`
-        combinedWhere := qtypes.NewMultiAndCondition(self.WhereClauses...)
-        whereClause, whereArgs := combinedWhere.QueryValue(self.Tables)
-        args = whereArgs
-        query += " " + fmt.Sprintf(whereTemplate, whereClause)
+    whereQuery, args := self.buildWhere()
+    if whereQuery != "" {
+        query += " " + whereQuery
     }
 
-    if len(self.OptionClauses) != 0 {
-        sort.SliceStable(self.OptionClauses, func(i int, j int) bool {
-            optTypeI := self.OptionClauses[i].OptionType()
-            optTypeJ := self.OptionClauses[j].OptionType()
-            return optTypeI < optTypeJ
-        })
-
-        for _, option := range(self.OptionClauses) {
-            qString, qVal := option.QueryValue(self.Tables)
-            query += " " + qString
-            args = append(args, qVal...)
-        }
+    optionQuery, optArgs := self.buildOptions()
+    if optionQuery != "" {
+        query += " " + optionQuery
+        args = append(args, optArgs...)
     }
 
     return query, args, nil
@@ -516,7 +603,7 @@ func (self Query) getSelectableColumns(typ reflect.Type) ([]string, error) {
             if bsTag.HasProperty("foreign") {
                 foreignBSTag := bsField.Tag("dbforeign")
                 if foreignBSTag == nil {
-                    panic(fmt.Errorf(
+                    panic(errors.Errorf(
                         "Foreign column declared without 'dbforeign' tag " +
                             "declared for field '%s'",
                         bsField.Name(),
@@ -672,6 +759,13 @@ func NewQuery(pool *pool.ConnectionPool) *Query {
             map[reflect.Type]*refl.GroupedFieldsWithBS,
         ),
         joinedObjects: make([]base.Base, 0),
+
+        cached: cachedQuery{
+            Select: queryValuePair{},
+            From: queryValuePair{},
+            Where: queryValuePair{},
+            Options: queryValuePair{},
+        },
 
         Errors: make([]error, 0),
     }

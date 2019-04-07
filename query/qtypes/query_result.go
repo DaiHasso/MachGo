@@ -13,6 +13,8 @@ import (
 )
 
 
+// AliasObjValMap maps an alias to a value of an object corresponding to that
+// alias.
 type AliasObjValMap map[string]*reflect.Value
 
 // QueryResult is a set of all the results from a query in objects.
@@ -32,7 +34,7 @@ func (self QueryResult) WriteTo(objects ...base.Base) error {
     for _, object := range objects {
         objValPtr := reflect.ValueOf(object)
         if objValPtr.Kind() != reflect.Ptr {
-            return fmt.Errorf(
+            return errors.Errorf(
                 "Object provided should be *%T not %T.",
                 object,
                 object,
@@ -42,7 +44,7 @@ func (self QueryResult) WriteTo(objects ...base.Base) error {
         if objVal.Kind() == reflect.Ptr {
             objTypeStr := fmt.Sprintf("%T", object)
             baseType := strings.Replace(objTypeStr, "*", "", -1)
-            return fmt.Errorf(
+            return errors.Errorf(
                 "Object provided should be *%s not %s.",
                 baseType,
                 objTypeStr,
@@ -88,7 +90,7 @@ func readRowIntoObjs(
         field := objVal.Elem().FieldByName(columnAliasField.FieldName)
 
         if !field.IsValid() {
-            return fmt.Errorf(
+            return errors.Errorf(
                 "Field in returned data '%s' is not valid.",
                 columnAliasField.FieldName,
             )

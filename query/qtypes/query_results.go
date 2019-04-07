@@ -1,7 +1,6 @@
 package qtypes
 
 import (
-    "fmt"
     "reflect"
 
     "github.com/jmoiron/sqlx"
@@ -10,6 +9,12 @@ import (
     "github.com/daihasso/machgo/refl"
     "github.com/daihasso/machgo/base"
 )
+
+// BaseSlicePointer is a pointer to a slice of pointers to bases like:
+//   `*[]*MyObject`
+// It is represented by an interface so that it can take in a slice of any
+// custom object you've implemented in your project.
+type BaseSlicePointer interface{}
 
 // QueryResults represents a set of results which generate QueryResult per row
 // and have convinience functions for batch reading.
@@ -37,7 +42,7 @@ func columnsToFieldNames(
     for i, column := range columnNames {
         columnAlias, ok := ColumnAliasFromString(column)
         if !ok {
-            return nil, nil, fmt.Errorf(
+            return nil, nil, errors.Errorf(
                 "Unexpected column in result: '%s'",
                 column,
             )
@@ -155,13 +160,13 @@ func (self *QueryResults) Close() error {
 // what data to write to which slices. This operation does not close the
 // transaction.
 func (self *QueryResults) WriteN(
-    count int, objectSlices ...base.Base,
+    count int, objectSlices ...BaseSlicePointer,
 ) (retErr error) {
     return self.write(count, false, objectSlices)
 }
 
 func (self *QueryResults) write(
-    count int, closeAfter bool, objectSlices ...base.Base,
+    count int, closeAfter bool, objectSlices []BaseSlicePointer,
 ) (retErr error) {
     defer func() {
         r := recover()
@@ -191,15 +196,25 @@ func (self *QueryResults) write(
 
     elemTypes := make([]reflect.Type, len(objectSlices))
     for i, objectSlice := range objectSlices {
-        if typ := reflect.TypeOf(objectSlice); typ.Kind() != reflect.Ptr {
-            return fmt.Errorf(
-                "Type must be pointer to slice not %T.",
+        typ := reflect.TypeOf(objectSlice)
+        if typ.Kind() != reflect.Ptr {
+            return errors.Errorf(
+                "Type of arg #%d must be pointer to slice not %T",
+                i,
                 objectSlice,
+            )
+        }
+        if elemTyp := typ.Elem(); elemTyp.Kind() != reflect.Slice {
+            return errors.Errorf(
+                "Type of arg #%d must be pointer to slice type not a " +
+                    "pointer to a %s",
+                i,
+                elemTyp,
             )
         }
         objElemType, err := refl.ElementTypeFromSlice(objectSlice)
         if err != nil {
-            return err
+            return errors.WithStack(err)
         }
 
         objElemTypeDeref := objElemType
@@ -208,7 +223,9 @@ func (self *QueryResults) write(
         }
 
         if _, ok := self.typeBSFieldMap[objElemTypeDeref]; !ok {
-            return fmt.Errorf("No results match type '%s'.", objElemTypeDeref)
+            return errors.Errorf(
+                "No results match type '%s'.", objElemTypeDeref,
+            )
         }
 
 
@@ -232,10 +249,10 @@ func (self *QueryResults) write(
                 elemVal.(base.Base),
             )
             if err != nil {
-                return err
+                return errors.WithStack(err)
             }
             if _, ok := self.aliasesInSelect[elemAlias]; !ok {
-                return fmt.Errorf(
+                return errors.Errorf(
                     "Can't write slice of type '%s', object is not in select.",
                     elemType,
                 )
@@ -246,7 +263,7 @@ func (self *QueryResults) write(
         nextResult := self.GetResult()
         err := nextResult.WriteTo(elemValues...)
         if err != nil {
-            return err
+            return errors.WithStack(err)
         }
 
         for i, elemVal := range elemValues {
@@ -266,7 +283,7 @@ func (self *QueryResults) write(
 
 // WriteAllTo writes all results to the provided slices, automatically
 // determining which match which. This operation closes the transaction.
-func (self *QueryResults) WriteAllTo(objectSlices ...base.Base) error {
+func (self *QueryResults) WriteAllTo(objectSlices ...BaseSlicePointer) error {
     return self.write(-1, true, objectSlices)
 }
 
