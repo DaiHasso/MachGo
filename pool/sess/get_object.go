@@ -50,22 +50,38 @@ func getObject(
         return errors.Wrap(err, "Error while trying to get table name")
     }
 
-    whereClause := fmt.Sprintf("%s = @%s", idColumn, idColumn)
+    whereClause := fmt.Sprintf("%s = :%s", idColumn, idColumn)
 
     statement := fmt.Sprintf(
         getObjectStatementTemplate, tableName, whereClause,
     )
 
+    values := map[string]interface{}{
+        idColumn: idValue,
+    }
+
     err = session.Transactionized(func(tx *sqlx.Tx) error {
         var err error
         statement = tx.Rebind(statement)
 
-        row := tx.QueryRowx(statement, idValue)
-
-        err = row.StructScan(target)
+        rows, err := tx.NamedQuery(statement, values)
         if err != nil {
             return errors.Wrap(
                 err, "Error while reading data from DB",
+            )
+        }
+        defer rows.Close()
+
+        if !rows.Next() {
+            return errors.New(
+                "No results from DB for object with provided id.",
+            )
+        }
+
+        err = rows.StructScan(target)
+        if err != nil {
+            return errors.Wrap(
+                err, "Error while reading data from DB into struct",
             )
         }
 

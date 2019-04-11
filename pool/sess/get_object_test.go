@@ -47,7 +47,7 @@ var _ = Describe("GetObject", func() {
 
         It("Should be able to get a simple object", func() {
             objectID := rand.Int63()
-            expectedQ := `SELECT \* FROM test_objects WHERE id = @id`
+            expectedQ := `SELECT \* FROM test_objects WHERE id = ?`
             object := testObject{}
             mock.ExpectBegin()
             mock.ExpectQuery(expectedQ).WithArgs(
