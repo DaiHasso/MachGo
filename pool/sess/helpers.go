@@ -9,6 +9,7 @@ import (
     "github.com/daihasso/machgo/query/qtypes"
     "github.com/daihasso/machgo/base"
     "github.com/daihasso/machgo/refl"
+    "github.com/daihasso/machgo/types"
 )
 
 func objectIdColumn(object base.Base) string {
@@ -36,11 +37,16 @@ func processSortedNamedValues(
         object,
         "db",
         func(name string, tagValueInterface refl.TagValueInterface) {
+            in := tagValueInterface.Interface
+            if _, ok := in.(types.Nullable); !ok && tagValueInterface.IsNil() {
+                return
+            }
+
             tagValue := tagValueInterface.TagValue
             randomNumber := rand.Int() // #nosec: G404
             variableName := fmt.Sprintf("%s_%d", tagValue, randomNumber)
             tagValues = append(tagValues, tagValue)
-            namedValue := sql.Named(variableName, tagValueInterface.Interface)
+            namedValue := sql.Named(variableName, in)
             tagValueArg[tagValue] = &namedValue
         },
     )

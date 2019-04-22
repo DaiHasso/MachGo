@@ -18,9 +18,23 @@ type TagValueInterface struct {
     Interface interface{}
 }
 
+// IsZero checks if the value of the TagValueInterface is nil.
+func (tvi *TagValueInterface) IsNil() bool {
+    if val := reflect.ValueOf(tvi.Interface); val.Kind() == reflect.Ptr {
+        return val.IsNil()
+    }
+
+    return false
+}
+
+// IsZero checks if the value of the TagValueInterface is zero.
+func (tvi *TagValueInterface) IsZero() bool {
+    return IsZeroValue(tvi.Interface)
+}
+
 // IsUnset checks if the value of the TagValueInterface is unset.
 func (tvi *TagValueInterface) IsUnset() bool {
-    return IsZeroValue(tvi.Interface)
+    return tvi.IsZero() || tvi.IsNil()
 }
 
 type fieldTagIterator func(string, TagValueInterface)

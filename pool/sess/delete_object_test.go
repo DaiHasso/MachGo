@@ -47,7 +47,7 @@ var _ = Describe("DeleteObject", func() {
 
         It("Should be able to delete a simple object", func() {
             objectID := rand.Int63()
-            expectedQ := `DELETE FROM test_objects WHERE id = @id`
+            expectedQ := `DELETE FROM test_objects WHERE id = ?`
             object := testObject{
                 Id: objectID,
                 Name: "foo",
@@ -96,7 +96,7 @@ var _ = Describe("DeleteObject", func() {
         It("Should be able to delete multiple objects", func() {
             objectID := rand.Int63()
             object2ID := rand.Int63()
-            expectedQ := `DELETE FROM test_objects WHERE id = @id`
+            expectedQ := `DELETE FROM test_objects WHERE id = ?`
             object := testObject{
                 Id: objectID,
                 Name: "foo",

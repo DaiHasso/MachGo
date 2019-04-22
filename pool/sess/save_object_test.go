@@ -18,6 +18,8 @@ import (
 
 var preInsertTripped = false
 var idGeneratorTripped = false
+type testNullableString string
+func (testNullableString) Nullable() {}
 
 type testObjectWithPreInsert struct {
     Id int64 `db:"id"`
@@ -41,6 +43,16 @@ func (self testObjectWithIdGenerator) NewID() interface{} {
     fmt.Fprintf(GinkgoWriter, "Called NewID")
     idGeneratorTripped = true
     return &self.testId
+}
+
+type testObjectWithPtr struct {
+    Id int64 `db:"id"`
+    Name *string `db:"name"`
+}
+
+type testObjectWithNullable struct {
+    Id int64 `db:"id"`
+    Name *testNullableString `db:"name"`
 }
 
 var _ = Describe("SaveObject", func() {
@@ -84,6 +96,46 @@ var _ = Describe("SaveObject", func() {
             mock.ExpectBegin()
             mock.ExpectExec(expectedQ).WithArgs(
                 objectID, "foo",
+            ).WillReturnResult(
+                    sqlmock.NewResult(objectID, 1),
+            )
+            mock.ExpectCommit()
+            err := SaveObject(&object)
+            Expect(err).ToNot(HaveOccurred())
+            Expect(Saved(&object)).To(BeTrue())
+        })
+
+        It("Should exclude null fields", func() {
+            objectID := rand.Int63()
+            expectedQ := `INSERT INTO test_object_with_ptrs \(id\) ` +
+                `VALUES \(\?\)`
+            object := testObjectWithPtr{
+                Id: objectID,
+                Name: nil,
+            }
+            mock.ExpectBegin()
+            mock.ExpectExec(expectedQ).WithArgs(
+                objectID,
+            ).WillReturnResult(
+                    sqlmock.NewResult(objectID, 1),
+            )
+            mock.ExpectCommit()
+            err := SaveObject(&object)
+            Expect(err).ToNot(HaveOccurred())
+            Expect(Saved(&object)).To(BeTrue())
+        })
+
+        It("Should not exclude nullable fields", func() {
+            objectID := rand.Int63()
+            expectedQ := `INSERT INTO test_object_with_nullables ` +
+                `\(id, name\) VALUES \(\?, \?\)`
+            object := testObjectWithNullable{
+                Id: objectID,
+                Name: nil,
+            }
+            mock.ExpectBegin()
+            mock.ExpectExec(expectedQ).WithArgs(
+                objectID, nil,
             ).WillReturnResult(
                     sqlmock.NewResult(objectID, 1),
             )

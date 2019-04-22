@@ -38,7 +38,7 @@ func deleteObject(object base.Base, session *Session) error {
     // TODO: Support composites.
     idValue := sql.Named(idColumn, identifier.Value)
 
-    whereClause := fmt.Sprintf("%s = @%s", idColumn, idColumn)
+    whereClause := fmt.Sprintf("%s = :%s", idColumn, idColumn)
 
     statement := fmt.Sprintf(
         deleteObjectStatementTemplate,
@@ -51,8 +51,10 @@ func deleteObject(object base.Base, session *Session) error {
 
         statement = tx.Rebind(statement)
 
-        insertValues := []interface{}{idValue}
-        _, err = tx.Exec(statement, insertValues...)
+        insertValues := map[string]interface{}{
+            idColumn: idValue,
+        }
+        _, err = tx.NamedExec(statement, insertValues)
 
         return err
     })
